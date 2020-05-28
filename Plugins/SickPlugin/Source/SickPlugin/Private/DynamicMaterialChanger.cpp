@@ -16,7 +16,7 @@ ADynamicMaterialChanger::ADynamicMaterialChanger()
 	CubeMesh->AttachToComponent(CubeRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 
 	CubeTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("CubeTrigger"));
-	CubeTrigger->bGenerateOverlapEvents = true;
+	CubeTrigger->SetGenerateOverlapEvents(true);
 	CubeTrigger->SetWorldScale3D(FVector(1.f, 1.f, 1.f));
 	CubeTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADynamicMaterialChanger::OnPlayerTriggerTransition);
 	CubeTrigger->OnComponentEndOverlap.AddDynamic(this, &ADynamicMaterialChanger::OnPlayerExitTransition);
@@ -35,6 +35,29 @@ void ADynamicMaterialChanger::BeginPlay()
 void ADynamicMaterialChanger::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (bRustEffectTrigger)
+	{
+		if (TransitionAmount > 0.f)
+		{
+			TransitionAmount -= DeltaTime;
+		}
+	}
+
+	if (bRustEffectTrigger)
+	{
+		if (TransitionAmount < 0.f)
+		{
+			TransitionAmount += DeltaTime;
+		}
+	}
+
+	UMaterialInstanceDynamic* TransitionMaterialInstance = CubeMesh->CreateDynamicMaterialInstance(0);
+
+	if (TransitionMaterialInstance != nullptr)
+	{
+		TransitionMaterialInstance->SetScalarParameterValue(FName("TransitionAmount"), TransitionAmount);
+	}
 }
 
 void ADynamicMaterialChanger::OnPlayerTriggerTransition(UPrimitiveComponent* OverlappedComp, AActor* otherActor,

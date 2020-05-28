@@ -35,7 +35,6 @@ public:
 	UStaticMeshComponent* CubeMesh;
 
 	// The trigger for the cube
-
 	UPROPERTY(EditAnywhere)
 	UBoxComponent* CubeTrigger;
 
