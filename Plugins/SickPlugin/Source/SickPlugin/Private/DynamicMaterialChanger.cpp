@@ -46,7 +46,7 @@ void ADynamicMaterialChanger::Tick(float DeltaTime)
 
 	if (bRustEffectTrigger)
 	{
-		if (TransitionAmount < 1.f)
+		if (TransitionAmount < 2.f)
 		{
 			TransitionAmount += DeltaTime;
 		}
