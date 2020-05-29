@@ -46,7 +46,7 @@ void ADynamicMaterialChanger::Tick(float DeltaTime)
 
 	if (bRustEffectTrigger)
 	{
-		if (TransitionAmount < 0.f)
+		if (TransitionAmount < 1.f)
 		{
 			TransitionAmount += DeltaTime;
 		}
@@ -66,10 +66,12 @@ void ADynamicMaterialChanger::OnPlayerTriggerTransition(UPrimitiveComponent* Ove
                                                         const FHitResult& SweepResult)
 {
 	bRustEffectTrigger = true;
+	GEngine->AddOnScreenDebugMessage(-5, 5.f, FColor::Green, TEXT("You've entered the Box Trigger!"));
 }
 
 void ADynamicMaterialChanger::OnPlayerExitTransition(UPrimitiveComponent* OverlappedComp, AActor* otherActor,
                                                      UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	bRustEffectTrigger = false;
+	GEngine->AddOnScreenDebugMessage(-5, 5.f, FColor::Green, TEXT("You've exited the Box Trigger!"));
 }
