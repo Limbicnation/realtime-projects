@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine.h"
+#include "Components/SceneComponent.h"
 #include "DynamicMaterialChanger.generated.h"
 
 
@@ -25,7 +26,9 @@ protected:
 
 public:
 	// Called every frame
-	void Tick(float DeltaTime) override;
+	virtual void Tick(float DeltaSeconds) override;
+
+	//void Tick(float DeltaTime) override;
 
 	// Dummy root component for the mesh
 	UPROPERTY(EditAnywhere)
@@ -52,7 +55,7 @@ public:
 
 private:
 
-	bool bRustEffectTrigger;
+	bool bRustEffectTriggered;
 
 	float TransitionAmount;
 };

@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
+#include "Components/SceneComponent.h"
 #include "DynamicMaterialChanger.h"
 
 // Sets default values
@@ -8,6 +8,8 @@ ADynamicMaterialChanger::ADynamicMaterialChanger()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	USceneComponent* RootComponent = nullptr;
 
 	CubeRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CubeRoot"));
 	RootComponent = CubeRoot;
@@ -18,12 +20,14 @@ ADynamicMaterialChanger::ADynamicMaterialChanger()
 	CubeTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("CubeTrigger"));
 	CubeTrigger->SetGenerateOverlapEvents(true);
 	CubeTrigger->SetWorldScale3D(FVector(1.f, 1.f, 1.f));
+	CubeTrigger->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
 	CubeTrigger->OnComponentBeginOverlap.AddDynamic(this, &ADynamicMaterialChanger::OnPlayerTriggerTransition);
 	CubeTrigger->OnComponentEndOverlap.AddDynamic(this, &ADynamicMaterialChanger::OnPlayerExitTransition);
-	CubeTrigger->AttachToComponent(CubeRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	CubeTrigger->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 
-	TransitionAmount = 1.f;
+	TransitionAmount = 0.f;
 }
+
 
 // Called when the game starts or when spawned
 void ADynamicMaterialChanger::BeginPlay()
@@ -36,7 +40,7 @@ void ADynamicMaterialChanger::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bRustEffectTrigger)
+	if (bRustEffectTriggered)
 	{
 		if (TransitionAmount > 0.f)
 		{
@@ -44,34 +48,33 @@ void ADynamicMaterialChanger::Tick(float DeltaTime)
 		}
 	}
 
-	if (bRustEffectTrigger)
+	if (bRustEffectTriggered)
 	{
-		if (TransitionAmount < 2.f)
+		if (TransitionAmount < 1.f)
 		{
-			TransitionAmount += DeltaTime;
+			TransitionAmount += DeltaTime; 
 		}
 	}
 
-	UMaterialInstanceDynamic* TransitionMaterialInstance = CubeMesh->CreateDynamicMaterialInstance(0);
+	UMaterialInstanceDynamic* MI_TeddyBear = CubeMesh->CreateDynamicMaterialInstance(0);
 
-	if (TransitionMaterialInstance != nullptr)
+	if (MI_TeddyBear != nullptr)
 	{
-		TransitionMaterialInstance->SetScalarParameterValue(FName("TransitionAmount"), TransitionAmount);
+		MI_TeddyBear->SetScalarParameterValue(FName("Color"), TransitionAmount);
 	}
 }
 
 void ADynamicMaterialChanger::OnPlayerTriggerTransition(UPrimitiveComponent* OverlappedComp, AActor* otherActor,
                                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-                                                        bool bFromSweep,
-                                                        const FHitResult& SweepResult)
+                                                        bool bFromSweep, const FHitResult& SweepResult)
 {
-	bRustEffectTrigger = true;
+	bRustEffectTriggered = true;
 	GEngine->AddOnScreenDebugMessage(-5, 5.f, FColor::Green, TEXT("You've entered the Box Trigger!"));
 }
 
 void ADynamicMaterialChanger::OnPlayerExitTransition(UPrimitiveComponent* OverlappedComp, AActor* otherActor,
                                                      UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	bRustEffectTrigger = false;
+	bRustEffectTriggered = false;
 	GEngine->AddOnScreenDebugMessage(-5, 5.f, FColor::Green, TEXT("You've exited the Box Trigger!"));
 }
