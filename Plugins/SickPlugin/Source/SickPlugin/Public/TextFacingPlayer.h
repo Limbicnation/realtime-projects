@@ -2,23 +2,20 @@
 
 #pragma once
 
+
 #include "CoreMinimal.h"
 #include "Engine.h"
 #include "GameFramework/Actor.h"
-#include "FacePlayerActor.generated.h"
-
+#include "TextFacingPlayer.generated.h"
 
 UCLASS()
-class SICKPLUGIN_API AFacePlayerActor : public AActor
+class SICKPLUGIN_API ATextFacingPlayer : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
-	AFacePlayerActor();
-
-	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* LocalPawn;
+	ATextFacingPlayer();
 
 protected:
 	// Called when the game starts or when spawned
@@ -27,5 +24,10 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	UTextRenderComponent MyText;
+
+	void MakeTextFacePlayer();
+
 
 };
