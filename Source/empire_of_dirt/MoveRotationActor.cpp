@@ -29,7 +29,17 @@ void AMoveRotationActor::Tick(float DeltaTime)
 
 	// Move Actor
 	FVector NewLocation = GetActorLocation();
-	NewLocation.Z += 1.f * MeshMovement;
+
+	float DeltaHeight = (FMath::Sin(RunningTime + DeltaTime) - FMath::Sin(RunningTime));
+
+	NewLocation.X += DeltaHeight * MeshMovementX;
+	NewLocation.Y += DeltaHeight * MeshMovementY;
+	NewLocation.Z += DeltaHeight * MeshMovementZ;
+
+	RunningTime += DeltaTime;
+
+	//NewLocation.Z += 1.f * MeshMovement;
+
 	SetActorLocation(NewLocation);
 
 	// Rotate Actor

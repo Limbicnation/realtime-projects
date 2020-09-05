@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Components/SceneComponent.h"
 #include "DynamicMaterialChanger.h"
+#include "Components/SceneComponent.h"
 
 // Sets default values
 ADynamicMaterialChanger::ADynamicMaterialChanger()

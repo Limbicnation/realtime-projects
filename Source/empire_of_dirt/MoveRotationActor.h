@@ -10,8 +10,8 @@ UCLASS()
 class EMPIRE_OF_DIRT_API AMoveRotationActor : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	// Sets default values for this actor's properties
 	AMoveRotationActor();
 
@@ -19,15 +19,23 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	float RunningTime;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	UStaticMeshComponent* Mesh;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
-	float MeshMovement;
+	float MeshMovementX;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MeshMovementY;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MeshMovementZ;
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float PitchValue;
@@ -37,5 +45,4 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float RollValue;
-	
 };
