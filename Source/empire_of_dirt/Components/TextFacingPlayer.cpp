@@ -2,41 +2,41 @@
 
 #include "TextFacingPlayer.h"
 
-// Sets default values
-ATextFacingPlayer::ATextFacingPlayer()
-{
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
 
-	MyText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("RotatingText"));
-	MyText->SetWorldSize(200.f);
-	MyText->SetTextRenderColor(FColor::Green);
-	MyText->SetHorizontalAlignment(EHTA_Center);
+// Sets default values
+ATextFacingPlayer::ATextFacingPlayer() {
+  // Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+  PrimaryActorTick.bCanEverTick = true;
+
+  MyText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("RotatingText"));
+  MyText->SetWorldSize(200.f);
+  MyText->SetTextRenderColor(FColor::Green);
+  MyText->SetHorizontalAlignment(EHTA_Center);
 }
 
 // Called when the game starts or when spawned
-void ATextFacingPlayer::BeginPlay()
-{
-	Super::BeginPlay();
+void ATextFacingPlayer::BeginPlay() {
+  Super::BeginPlay();
 }
 
 // Called every frame
-void ATextFacingPlayer::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
+void ATextFacingPlayer::Tick(float DeltaTime) {
+  Super::Tick(DeltaTime);
 
-
-	MakeTextFacePlayer();
+  MakeTextFacePlayer();
 }
 
-void ATextFacingPlayer::MakeTextFacePlayer()
-{
-	ATextFacingPlayer* Character = Cast<ATextFacingPlayer>(UGameplayStatics::GetPlayerCharacter(this, 0));
+float Value;
 
-	//FRotator NewRotation = Character->GetActorRotation();
-	FRotator NewRotation = GetActorRotation();
-	NewRotation.Yaw += 180.f;
-	SetActorRotation(NewRotation);
+void ATextFacingPlayer::MakeTextFacePlayer() {
+  ATextFacingPlayer *Character = Cast<ATextFacingPlayer>(
+      UGameplayStatics::GetPlayerCharacter(this, 0));
 
-	//MyText->SetRelativeRotation(NewRotation);
+  //FRotator NewRotation = Character->GetActorRotation();
+  FRotator NewRotation = GetActorRotation();
+  NewRotation.Pitch += 0.f;
+  NewRotation.Yaw += 0.f;
+  MyText->SetRelativeRotation(NewRotation);
+
+  //MyText->SetRelativeRotation(NewRotation);
 }
