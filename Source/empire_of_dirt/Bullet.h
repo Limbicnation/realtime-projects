@@ -2,9 +2,8 @@
 
 #pragma once
 
+
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Bullet.generated.h"
 
@@ -13,7 +12,7 @@ class EMPIRE_OF_DIRT_API ABullet : public AActor
 {
 	GENERATED_BODY()
 
-	
+
 public:
 	// Sets default values for this actor's properties
 	ABullet();
@@ -21,7 +20,7 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	// set to 'void' when error keeps happening
-	virtual void BeginPlay() override;
+	void BeginPlay() override;
 
 	UPROPERTY(EditAnywhere, Category = "Componets")
 	UStaticMeshComponent* BulletMesh;
