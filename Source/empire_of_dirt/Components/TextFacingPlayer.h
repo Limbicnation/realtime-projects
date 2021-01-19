@@ -9,27 +9,27 @@
 #include "TextFacingPlayer.generated.h"
 
 UCLASS()
-class EMPIRE_OF_DIRT_API ATextFacingPlayer : public AActor {
-  GENERATED_BODY()
+class EMPIRE_OF_DIRT_API ATextFacingPlayer : public AActor
+{
+	GENERATED_BODY()
 
 public:
 
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FloatingText")
-  USceneComponent *Root;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FloatingText")
+	USceneComponent* Root;
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FloatingText")
-  UTextRenderComponent *MyText;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FloatingText")
+	UTextRenderComponent* MyText;
 
-  // Sets default values for this actor's properties
-  ATextFacingPlayer();
+	// Sets default values for this actor's properties
+	ATextFacingPlayer();
 
-  // Called when the game starts or when spawned
-  virtual void BeginPlay() override;
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
 
-  // Called every frame
-  virtual void Tick(float DeltaTime) override;
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
 
-  void MakeTextFacePlayer();
-
+	void MakeTextFacePlayer();
 };
