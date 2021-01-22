@@ -14,6 +14,12 @@ ATextFacingPlayer::ATextFacingPlayer()
 	MyText->SetWorldSize(200.f);
 	MyText->SetTextRenderColor(FColor::Green);
 	MyText->SetHorizontalAlignment(EHTA_Center);
+
+	//PlayerLocation = FVector(300, 0, 1);
+	//TextLocation = FVector(400, 0, 0);
+	Dimensions = FVector(300, 0, 1);
+	AxisVector = FVector(0, 0, 1);
+	Multiplier = 50.f;
 }
 
 // Called when the game starts or when spawned
@@ -27,19 +33,51 @@ void ATextFacingPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	MakeTextFacePlayer();
+	ATextFacingPlayer* MyPlayer = Cast<ATextFacingPlayer>(
+		UGameplayStatics::GetPlayerCharacter(this, 0));
+
+	//MakeTextFacePlayer();
+	FRotator NewRotation = FRotator(0, AngleAxis, 0);
+
+	MyText->SetRelativeRotation(NewRotation);
+
+	FVector NewLocation = FVector(0, 50, 0);
+	FQuat QuatRotation = FQuat(NewRotation * -1);
+
+	Super::Tick(DeltaTime);
+	if (USceneComponent* RootComp = GetRootComponent())
+	{
+		if (APawn* LocalPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
+		{
+			this->SetActorRotation(
+				(RootComp->GetComponentLocation() - LocalPawn->GetActorLocation()).GetSafeNormal().Rotation());
+		}
+	}
 }
 
 
-void ATextFacingPlayer::MakeTextFacePlayer()
+/* void ATextFacingPlayer::MakeTextFacePlayer()
 {
 	ATextFacingPlayer* Character = Cast<ATextFacingPlayer>(
 		UGameplayStatics::GetPlayerCharacter(this, 0));
 
-	FRotator newTextRotation = FRotator::ZeroRotator;
-	SetActorRotation(newTextRotation);
+	FRotator NewRotation = FRotator(0, AngleAxis, 0);
+	FVector NewLocation = FVector(0, 50, 0);
+
+	//FQuat QuatRotation = FQuat(NewRotation);
+	//SetActorLocationAndRotation(NewLocation, QuatRotation, false, 0, ETeleportType::None);
+
+	//FVector NewLocation = Dimensions.RotateAngleAxis(AngleAxis, AxisVector);
+
+	//FRotator NewRotation = Character->GetActorRotation();
+	//FRotator NewRotation = FRotator(0, AngleAxis, 0);
+	//NewRotation.Yaw = 180.f;
+
+	//MyText->SetRelativeRotation(NewRotation);
 
 
-	MyText->SetRelativeRotation(newTextRotation);
+	//FQuat QuatRotation = FQuat(NewRotation);
+
+	//SetActorLocationAndRotation(NewLocation, QuatRotation, false, nullptr, ETeleportType::None);
 }
- 
+*/
