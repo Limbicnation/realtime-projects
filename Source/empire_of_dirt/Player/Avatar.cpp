@@ -104,7 +104,7 @@ void AAvatar::Turn(float value)
 void AAvatar::BeginSprinting()
 {
 	bIsSprinting = true;
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are Sprintin!"));
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are Sprinting!"));
 }
 
 void AAvatar::EndSprinting()
