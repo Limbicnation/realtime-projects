@@ -13,14 +13,32 @@ AGlowingPickupObject::AGlowingPickupObject()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	SM_Pickup = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SMPickup"));
+	Pickup = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SMPickup"));
 
 	BT_Pickup = CreateDefaultSubobject<UBoxComponent>(TEXT("BTPickup"));
 	BT_Pickup->SetGenerateOverlapEvents(true);
 	BT_Pickup->OnComponentBeginOverlap.AddDynamic(this, &AGlowingPickupObject::EnteredObjectRadius);
 	BT_Pickup->OnComponentEndOverlap.AddDynamic(this, &AGlowingPickupObject::LeftObjectRadius);
 
-	SM_MyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MyMesh"));
+	PickupRoot = CreateDefaultSubobject<USceneComponent>(TEXT("PickupRoot"));
+	RootComponent = PickupRoot;
+
+	PickupMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MyMesh"));
+	PickupMesh->AttachToComponent(PickupRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+
+	PickupBox = CreateDefaultSubobject<UBoxComponent>(TEXT("PickupBox"));
+	PickupBox->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
+	PickupBox->SetGenerateOverlapEvents(true);
+	PickupBox->OnComponentBeginOverlap.AddDynamic(this, &AGlowingPickupObject::OnPlayerEnteredPickupBox);
+	PickupBox->AttachToComponent(PickupRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+}
+
+void AGlowingPickupObject::OnPlayerEnteredPickupBox(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+                                                    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+                                                    bool bFromSweep, const FHitResult& SweepResult)
+{
+	/* To Do -> Add pickup to inventory*/
+	Destroy();
 }
 
 // Called when the game starts or when spawned
@@ -37,7 +55,7 @@ void AGlowingPickupObject::Tick(float DeltaTime)
 
 void AGlowingPickupObject::ToggleGlow(bool IsGlowing)
 {
-	SM_Pickup->SetRenderCustomDepth(IsGlowing);
+	Pickup->SetRenderCustomDepth(IsGlowing);
 }
 
 void AGlowingPickupObject::EnteredObjectRadius(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

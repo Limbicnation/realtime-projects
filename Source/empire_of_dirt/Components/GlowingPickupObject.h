@@ -21,8 +21,15 @@ public:
 	USceneComponent* PickupRoot;
 
 	/*static mesh for pickup*/
+	UStaticMeshComponent* PickupMesh;
+
 	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* SM_MyMesh;
+	UShapeComponent* PickupBox;
+
+	UFUNCTION()
+	void OnPlayerEnteredPickupBox(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor,
+	                              class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+	                              const FHitResult& SweepResult);
 
 
 protected:
@@ -33,7 +40,7 @@ protected:
 
 
 	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* SM_Pickup;
+	UStaticMeshComponent* Pickup;
 
 	UPROPERTY(EditAnywhere)
 	UBoxComponent* BT_Pickup;
