@@ -17,6 +17,7 @@ public:
 	// Sets default values for this actor's properties
 	AGlowingPickupObject();
 
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -33,4 +34,17 @@ protected:
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+
+	/*Toggle item glow*/
+	void ToggleGlow(bool IsGlowing);
+
+	UFUNCTION()
+	void EnteredObjectRadius(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor,
+	                         class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+	                         const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void LeftObjectRadius(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor,
+	                      class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 };
