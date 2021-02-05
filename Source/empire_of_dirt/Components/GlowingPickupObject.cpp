@@ -4,6 +4,7 @@
 #include "Components/GlowingPickupObject.h"
 #include "Classes/Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Classes/Components/ShapeComponent.h"
 
 
 // Sets default values
@@ -18,6 +19,8 @@ AGlowingPickupObject::AGlowingPickupObject()
 	BT_Pickup->SetGenerateOverlapEvents(true);
 	BT_Pickup->OnComponentBeginOverlap.AddDynamic(this, &AGlowingPickupObject::EnteredObjectRadius);
 	BT_Pickup->OnComponentEndOverlap.AddDynamic(this, &AGlowingPickupObject::LeftObjectRadius);
+
+	SM_MyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MyMesh"));
 }
 
 // Called when the game starts or when spawned

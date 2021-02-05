@@ -17,12 +17,20 @@ public:
 	// Sets default values for this actor's properties
 	AGlowingPickupObject();
 
+	UPROPERTY(EditAnywhere)
+	USceneComponent* PickupRoot;
+
+	/*static mesh for pickup*/
+	UPROPERTY(EditAnywhere)
+	UStaticMeshComponent* SM_MyMesh;
+
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 protected:
+
 
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* SM_Pickup;
