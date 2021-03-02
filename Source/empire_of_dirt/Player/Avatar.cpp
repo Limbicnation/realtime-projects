@@ -2,10 +2,11 @@
 
 
 #include "Avatar.h"
-#include "Components/StaticMeshComponent.h"
+#include "Classes/Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
-//#include "GameFramework/FloatingPawnMovement.h"
+#include "Bullet.h"
+#include "GameFramework/FloatingPawnMovement.h"
 
 
 // Sets default values
@@ -50,6 +51,8 @@ void AAvatar::Tick(float DeltaTime)
 void AAvatar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AAvatar::shoot);
 
 	InputComponent->BindAction("Sprint", IE_Pressed, this, &AAvatar::BeginSprinting);
 	InputComponent->BindAction("Sprint", IE_Released, this, &AAvatar::EndSprinting);
@@ -111,4 +114,24 @@ void AAvatar::EndSprinting()
 {
 	bIsSprinting = false;
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are no longer sprinting!"));
+}
+
+void AAvatar::shoot()
+{
+	if (BulletClass) 
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		SpawnParams.bNoFail = true;
+		SpawnParams.Owner = this;
+		SpawnParams.Instigator = this;
+
+		FTransform BulletSpawnTransform;
+		BulletSpawnTransform.SetLocation(GetActorForwardVector() * 500.f + GetActorLocation() + 100.f);
+		BulletSpawnTransform.SetRotation(GetActorRotation().Quaternion());
+		BulletSpawnTransform.SetScale3D(FVector(1.f));
+
+		GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+	}
+
 }

@@ -2,6 +2,7 @@
 
 
 #include "Bullet.h"
+#include "Classes/Components/StaticMeshComponent.h"
 #include "Classes/GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values

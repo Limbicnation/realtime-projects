@@ -56,6 +56,12 @@ protected:
 	UPROPERTY(EditAnywhere)
 	float WalkingValue;
 
+	/* Handle shooting*/
+
+	void shoot();
+
+	UPROPERTY(EditAnywhere, Category = "Shooting")
+	TSubclassOf<class ABullet> BulletClass;
 
 
 public:
