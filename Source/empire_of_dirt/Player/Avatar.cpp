@@ -27,10 +27,6 @@ AAvatar::AAvatar()
 
 	CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>("CubeMesh");
 
-	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
-	//CameraComponent->SetupAttachment(GetMesh());
-	Camera->bUsePawnControlRotation = true;
-
 	SprintingValue = 16.0f;
 
 	WalkingValue = 2.0f;
@@ -41,6 +37,17 @@ AAvatar::AAvatar()
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 300.f;
 	CameraBoom->bUsePawnControlRotation = true;
+
+	/** Setup follow camera*/
+
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FollowCamera-> SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+
+
+	//Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
+	//CameraComponent->SetupAttachment(GetMesh());
+	//Camera->bUsePawnControlRotation = true;
 
 }
 
