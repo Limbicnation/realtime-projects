@@ -7,6 +7,7 @@
 #include "Camera/CameraComponent.h"
 #include "Bullet.h"
 #include "GameFramework/FloatingPawnMovement.h"
+#include "GameFramework/SpringArmComponent.h"
 
 
 // Sets default values
@@ -33,6 +34,14 @@ AAvatar::AAvatar()
 	SprintingValue = 16.0f;
 
 	WalkingValue = 2.0f;
+
+	/** Setup camera boom (pulls in toward the character if there is a collision) */
+
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->TargetArmLength = 300.f;
+	CameraBoom->bUsePawnControlRotation = true;
+
 }
 
 // Called when the game starts or when spawned
