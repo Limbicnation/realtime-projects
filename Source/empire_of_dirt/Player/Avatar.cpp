@@ -27,7 +27,7 @@ AAvatar::AAvatar()
 
 	CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>("CubeMesh");
 
-	SprintingValue = 16.0f;
+	SprintingValue = 32.0f;
 
 	WalkingValue = 2.0f;
 

@@ -36,6 +36,8 @@ protected:
 	// Called when the game starts or when spawned
 	void BeginPlay() override;
 
+	/** Handle Player Movement */
+
 	void MoveForward(float Val);
 	void MoveRight(float Val);
 
