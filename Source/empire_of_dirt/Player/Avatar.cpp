@@ -84,7 +84,7 @@ void AAvatar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void AAvatar::MoveForward(float value)
 {
-	if (value != 0.f)
+	if ((Controller != nullptr) && (value != 0.f))
 	{
 		if (bIsSprinting)
 			value *= SprintingValue;
