@@ -11,7 +11,9 @@
 
 
 // Sets default values
-AAvatar::AAvatar()
+AAvatar::AAvatar() :
+	BaseTurnRate(45.f),
+	BaseLookUpRate(45.f)
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -108,7 +110,7 @@ void AAvatar::LookUp(float value)
 {
 	if (value != 0.f)
 	{
-		AddControllerPitchInput(value);
+		AddControllerPitchInput(value * BaseLookUpRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame
 	}
 }
 
@@ -116,8 +118,22 @@ void AAvatar::Turn(float value)
 {
 	if (value != 0.f)
 	{
-		AddControllerYawInput(value);
+		AddControllerYawInput(value * BaseTurnRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame);
 	}
+}
+
+void AAvatar::TurnRate(float Rate)
+{
+	if (Rate != 0.f)
+	{
+		AddControllerYawInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame);
+	}
+}
+
+void AAvatar::LookUpRate(float Rate)
+{
+	// calculate delta for this frame from the rate value
+	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame
 }
 
 void AAvatar::BeginSprinting()

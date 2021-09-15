@@ -44,6 +44,16 @@ protected:
 	void LookUp(float Val);
 	void Turn(float Val);
 
+	/** Called via input to turn at a given rate
+	* @parm Rate This is a normalized rate i.e. 1.0 mean 100% rate
+	*/
+	void TurnRate(float Rate);
+
+	/** Called via input to Look up at a given rate
+    * @parm Rate This is a normalized rate i.e. 1.0 mean 100% rate
+    */
+	void LookUpRate(float Rate);
+
 	/** Handle Player sprinting */
 
 	void BeginSprinting();
@@ -81,6 +91,14 @@ private:
 	/** Camera that follows the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
+
+	/** Base turn rate in deg/sec Other scaling may effect final turn rate */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	float BaseTurnRate;
+
+	/** Base look up/down rate in deg/sec Other scaling may effect final turn rate */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	float BaseLookUpRate;
 
 
 public:
