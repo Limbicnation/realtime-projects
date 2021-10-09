@@ -3,6 +3,7 @@
 
 #include "Components/GlowingPickupObject.h"
 #include "Classes/Components/BoxComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Classes/Components/ShapeComponent.h"
 
@@ -24,13 +25,13 @@ AGlowingPickupObject::AGlowingPickupObject()
 	RootComponent = PickupRoot;
 
 	PickupMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MyMesh"));
-	PickupMesh->AttachToComponent(PickupRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	PickupMesh->SetupAttachment(PickupRoot); FAttachmentTransformRules (EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget,EAttachmentRule::SnapToTarget, true);
 
 	PickupBox = CreateDefaultSubobject<UBoxComponent>(TEXT("PickupBox"));
 	PickupBox->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 	PickupBox->SetGenerateOverlapEvents(true);
 	PickupBox->OnComponentBeginOverlap.AddDynamic(this, &AGlowingPickupObject::OnPlayerEnteredPickupBox);
-	PickupBox->AttachToComponent(PickupRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	PickupMesh->SetupAttachment(PickupRoot); FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, true);
 }
 
 void AGlowingPickupObject::OnPlayerEnteredPickupBox(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
