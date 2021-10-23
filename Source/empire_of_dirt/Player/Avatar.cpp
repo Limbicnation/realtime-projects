@@ -24,7 +24,7 @@ AAvatar::AAvatar() :
 	/** Add Character movement */
 
 	PlayerMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatPawnMovement");
-	PlayerMovement->MaxSpeed = 2500.f;
+	PlayerMovement->MaxSpeed = 3500;
 
 
 	CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>("CubeMesh");
@@ -100,7 +100,7 @@ void AAvatar::MoveRight(float value)
 	if (Controller && value)
 	{
 		if (bIsSprinting)
-			value *= SprintingValue;
+			value *= WalkingValue;
 		/** Add movement in that direction */
 		AddMovementInput(GetActorRightVector(), value / WalkingValue);
 	}
