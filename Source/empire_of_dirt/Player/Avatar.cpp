@@ -8,6 +8,7 @@
 #include "Bullet.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 
 // Sets default values
@@ -44,7 +45,17 @@ AAvatar::AAvatar() :
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera-> SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	FollowCamera->bUsePawnControlRotation = true; // Camera does not rotate relative to arm
+
+	// Don't rotate, when the controller rotates. Camera rotates independent of Character rotation
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f); // at this rotation rate
+	GetCharacterMovement()->JumpZVelocity = 600.f; // These are values to tweak and to get them right for your game
+	GetCharacterMovement()->AirControl = 0.2f; // These are values to tweak and to get them right for your game
 
 
 	//Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
