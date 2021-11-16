@@ -21,11 +21,8 @@ public:
 protected:
 
 	// Called when the game starts or when spawned    
-	void BeginPlay() override;
-	/* #if WITH_EDITOR
-		ENGINE_API void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	#endif // WITH_EDITOR
-		//virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override; */
+	virtual void BeginPlay() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 	void Refresh();
 
@@ -53,9 +50,6 @@ protected:
 		float BarLocation;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-		float Degrees;
-
-	UPROPERTY(EditAnywhere, Category = "Audio")
 		float BarScaleY;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
@@ -64,18 +58,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Audio")
 		float BarScaleX;
 
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float YawValue;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float RollValue;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+		float PitchValue;
+
 
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
-	UPROPERTY(EditAnywhere, Category = "Movement")
-	float PitchValue;
-
-	UPROPERTY(EditAnywhere, Category = "Movement")
-	float YawValue;
-
-	UPROPERTY(EditAnywhere, Category = "Movement")
-	float RollValue;
 
 };
