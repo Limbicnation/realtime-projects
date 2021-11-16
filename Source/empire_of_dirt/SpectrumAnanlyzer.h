@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include <ObjectMacros.h>
 #include "SpectrumAnanlyzer.generated.h"
 
 UCLASS()
@@ -29,42 +30,52 @@ protected:
 	void Refresh();
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	class UTimeSynthComponent* TimeSynthComponent;
+		class UTimeSynthComponent* TimeSynthComponent;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	class UTimeSynthClip* TimeSynthClip;
+		class UTimeSynthClip* TimeSynthClip;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	TArray<UStaticMeshComponent*> SpectrumBars;
+		TArray<UStaticMeshComponent*> SpectrumBars;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	UStaticMesh* SpectrumBarMesh;
+		UStaticMesh* SpectrumBarMesh;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	float SpectrumBarFrequency;
+		float SpectrumBarFrequency;
 
 	// Amount of spacing between each bar
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	float SpectrumBarSpacing;
+		float SpectrumBarSpacing;
 
 	// Edit bar location alignment 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	float BarLocation;
+		float BarLocation;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	float Degrees;
+		float Degrees;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	float BarScaleY;
+		float BarScaleY;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	float BarScaleZ;
+		float BarScaleZ;
 
 	UPROPERTY(EditAnywhere, Category = "Audio")
-	float BarScaleX;
+		float BarScaleX;
 
 
 public:
 	// Called every frame
-	void Tick(float DeltaTime) override;
+	virtual void Tick(float DeltaTime) override;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float PitchValue;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float YawValue;
+
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float RollValue;
+
 };

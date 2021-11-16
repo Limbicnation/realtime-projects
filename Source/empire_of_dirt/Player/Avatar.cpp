@@ -136,7 +136,7 @@ void AAvatar::Turn(float value)
 void AAvatar::TurnRate(float Rate)
 {
 	if (Rate != 0.f)
-	{
+	{   // calculate delta for this frame from the rate information
 		AddControllerYawInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame);
 	}
 }

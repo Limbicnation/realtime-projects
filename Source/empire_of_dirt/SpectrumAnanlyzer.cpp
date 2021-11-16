@@ -4,6 +4,7 @@
 #include "SpectrumAnanlyzer.h"
 #include "TimeSynthComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Math/Rotator.h"
 #include "UnitConversion.h"
 
 // Sets default values
@@ -14,8 +15,9 @@ ASpectrumAnalyzer::ASpectrumAnalyzer()
 
 	SpectrumBarSpacing = 100.f;
 	SpectrumBarFrequency = 250.f;
-
-	Degrees = 20.f;
+	PitchValue = 45.f;
+	YawValue = 20.f;
+	RollValue = 45.f;
 
 	TimeSynthComponent = CreateDefaultSubobject<UTimeSynthComponent>("TimeSynthComponent");
 	TimeSynthComponent->bEnableSpectralAnalysis = true;
@@ -34,7 +36,7 @@ ASpectrumAnalyzer::ASpectrumAnalyzer()
 		SpectrumBar->SetStaticMesh(SpectrumBarMesh);
 		SpectrumBar->SetRelativeLocation(FVector(i * SpectrumBarSpacing, 0.f, 0.f));
 		// Setup rotation alignment
-		SpectrumBar->SetRelativeRotation(FRotator(FMath::Cos(Degrees), FMath::Sin(Degrees), 0.f));
+		SpectrumBar->SetRelativeRotation(FRotator(FMath::Sin(Degrees), FMath::Tan(YawValue), 45.f));
 		SpectrumBars.Add(SpectrumBar);
 	}
 }
@@ -66,7 +68,8 @@ void ASpectrumAnalyzer::Refresh()
 			UStaticMeshComponent* SpectrumBar = SpectrumBars[i];
 			SpectrumBar->SetStaticMesh(SpectrumBarMesh);
 			SpectrumBar->SetRelativeLocation(FVector((i + 1) * SpectrumBarSpacing, 0.f, 0.f));
-			SpectrumBar->SetRelativeLocation(FVector(FMath::Cos(Degrees), FMath::Sin(Degrees), 0.f));
+			SpectrumBar->SetRelativeLocation(FVector(FMath::Cos(YawValue), FMath::Sin(YawValue), 0.f));
+
 		}
 	}
 }
@@ -87,8 +90,8 @@ void ASpectrumAnalyzer::Tick(float DeltaTime)
 		SpectrumBar->SetWorldScale3D(FMath::VInterpTo(SpectrumBar->GetComponentScale(), BarScaleZ, DeltaTime, 5.f));
 
 		// Bar alignment
-		FRotator BarLocation = (FRotator(FMath::Cos(Degrees), FMath::Sin(Degrees), 0.f));
-		//SpectrumBar += (FVector(BarLocation * Degrees));
+		FRotator BarLocation = (FRotator(FMath::Cos(YawValue), FMath::Sin(YawValue), 45.f));
+		FRotator Degrees = (FRotator(BarLocation * YawValue));
 
 		// Update Bar ScaleY
 		FVector BarScaleY = SpectrumBar->GetComponentScale();
