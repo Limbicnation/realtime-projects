@@ -19,10 +19,12 @@ public:
 	ASpectrumAnalyzer();
 
 protected:
-
+	/*
 	// Called when the game starts or when spawned    
-	virtual void BeginPlay() override;
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	/* virtual void BeginPlay() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override; */
+
+	void BeginPlay();
 
 	void Refresh();
 

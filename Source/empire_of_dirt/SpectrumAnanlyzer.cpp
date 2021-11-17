@@ -42,22 +42,31 @@ ASpectrumAnalyzer::ASpectrumAnalyzer()
 	}
 }
 
-// Called when the game starts or when spawned
 void ASpectrumAnalyzer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Refresh();
-
 	TimeSynthComponent->PlayClip(TimeSynthClip);
 }
 
- void ASpectrumAnalyzer::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+// Called when the game starts or when spawned
+/*
+void ASpectrumAnalyzer::BeginPlay()
+{
+	Super::BeginPlay();
+
+	
+	Refresh();
+
+	TimeSynthComponent->PlayClip(TimeSynthClip); 
+} */
+
+/* void ASpectrumAnalyzer::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
 	Refresh();
-}
+}*/
 
 
 void ASpectrumAnalyzer::Refresh()
