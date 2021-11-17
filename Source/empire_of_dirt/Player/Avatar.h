@@ -100,11 +100,15 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float BaseLookUpRate;
 
+	/** Variable for shooting Sound Cues for Player Character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class USoundCue* ShootSound;
+
 
 public:
-	/** Returns camera boom subobject */
+	/** Returns camera boom sub object */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const {return CameraBoom;}
-	/** Returns follow camera  subobject */
+	/** Returns follow camera  sub object */
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera;}
 
 };
