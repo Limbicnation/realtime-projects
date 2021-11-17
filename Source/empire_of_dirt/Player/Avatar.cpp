@@ -9,6 +9,8 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundCue.h"
 
 
 // Sets default values
@@ -53,7 +55,7 @@ AAvatar::AAvatar() :
 	bUseControllerRotationRoll = false;
 
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f); // at this rotation rate
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 250.f, 0.f); // at this rotation rate
 	GetCharacterMovement()->JumpZVelocity = 600.f; // These are values to tweak and to get them right for your game
 	GetCharacterMovement()->AirControl = 0.2f; // These are values to tweak and to get them right for your game
 
@@ -161,6 +163,13 @@ void AAvatar::EndSprinting()
 
 void AAvatar::shoot()
 {
+	// handle SFX for shooting
+
+	if (ShootSound)
+	{
+		UGameplayStatics::PlaySound2D(this, ShootSound);
+	}
+
 	if (BulletClass) 
 	{
 		FActorSpawnParameters SpawnParams;
@@ -176,5 +185,6 @@ void AAvatar::shoot()
 
 		GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
 	}
+
 
 }

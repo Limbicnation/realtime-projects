@@ -15,9 +15,10 @@ ASpectrumAnalyzer::ASpectrumAnalyzer()
 
 	SpectrumBarSpacing = 100.f;
 	SpectrumBarFrequency = 250.f;
-	PitchValue = 45.f;
-	YawValue = 20.f;
-	RollValue = 45.f;
+
+	PitchValue = 0.f;
+	YawValue = 0.f;
+	RollValue = 0.f;
 
 	TimeSynthComponent = CreateDefaultSubobject<UTimeSynthComponent>("TimeSynthComponent");
 	TimeSynthComponent->bEnableSpectralAnalysis = true;
@@ -35,29 +36,38 @@ ASpectrumAnalyzer::ASpectrumAnalyzer()
 		SpectrumBar->SetupAttachment(TimeSynthComponent);
 		SpectrumBar->SetStaticMesh(SpectrumBarMesh);
 		SpectrumBar->SetRelativeLocation(FVector(i * SpectrumBarSpacing, 0.f, 0.f));
-		// Setup rotation alignment
-		SpectrumBar->SetRelativeRotation(FRotator(FMath::Sin(Degrees), FMath::Tan(YawValue), 45.f));
 		SpectrumBars.Add(SpectrumBar);
+
+
 	}
 }
 
-// Called when the game starts or when spawned
 void ASpectrumAnalyzer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Refresh();
-
 	TimeSynthComponent->PlayClip(TimeSynthClip);
 }
+
+// Called when the game starts or when spawned
+/*
+void ASpectrumAnalyzer::BeginPlay()
+{
+	Super::BeginPlay();
+
+	
+	Refresh();
+
+	TimeSynthComponent->PlayClip(TimeSynthClip); 
+} */
 
 /* void ASpectrumAnalyzer::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
 	Refresh();
-}
-*/
+}*/
+
 
 void ASpectrumAnalyzer::Refresh()
 {
@@ -68,7 +78,6 @@ void ASpectrumAnalyzer::Refresh()
 			UStaticMeshComponent* SpectrumBar = SpectrumBars[i];
 			SpectrumBar->SetStaticMesh(SpectrumBarMesh);
 			SpectrumBar->SetRelativeLocation(FVector((i + 1) * SpectrumBarSpacing, 0.f, 0.f));
-			SpectrumBar->SetRelativeLocation(FVector(FMath::Cos(YawValue), FMath::Sin(YawValue), 0.f));
 
 		}
 	}
@@ -89,10 +98,6 @@ void ASpectrumAnalyzer::Tick(float DeltaTime)
 		(BarScaleZ.Z = 1.f + SpecData.Magnitude * 0.2f) * BarScaleZ;
 		SpectrumBar->SetWorldScale3D(FMath::VInterpTo(SpectrumBar->GetComponentScale(), BarScaleZ, DeltaTime, 5.f));
 
-		// Bar alignment
-		FRotator BarLocation = (FRotator(FMath::Cos(YawValue), FMath::Sin(YawValue), 45.f));
-		FRotator Degrees = (FRotator(BarLocation * YawValue));
-
 		// Update Bar ScaleY
 		FVector BarScaleY = SpectrumBar->GetComponentScale();
 		// Set Bar intensity 
@@ -104,5 +109,10 @@ void ASpectrumAnalyzer::Tick(float DeltaTime)
 		// Set Bar intensity
 		(BarScaleY.Y = 1.f + SpecData.Magnitude * 0.2f) * BarScaleX;
 		SpectrumBar->SetWorldScale3D(FMath::VInterpTo(SpectrumBar->GetComponentScale(), BarScaleX, DeltaTime, 5.f));
+
+		// Rotate Actor
+		FQuat QuatRotation = FQuat(FRotator(PitchValue, YawValue, DeltaTime));
+
+		AddActorLocalRotation(QuatRotation, false, nullptr, ETeleportType::None);
 	}
 }
