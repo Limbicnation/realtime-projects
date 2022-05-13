@@ -25,6 +25,7 @@ protected:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override; */
 
 	void BeginPlay();
+	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
 
 	void Refresh();
 

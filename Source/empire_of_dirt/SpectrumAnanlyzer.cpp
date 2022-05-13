@@ -46,6 +46,8 @@ void ASpectrumAnalyzer::BeginPlay()
 {
 	Super::BeginPlay();
 
+	Refresh();
+
 	TimeSynthComponent->PlayClip(TimeSynthClip);
 }
 
@@ -61,12 +63,12 @@ void ASpectrumAnalyzer::BeginPlay()
 	TimeSynthComponent->PlayClip(TimeSynthClip); 
 } */
 
-/* void ASpectrumAnalyzer::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void ASpectrumAnalyzer::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
 	Refresh();
-}*/
+}
 
 
 void ASpectrumAnalyzer::Refresh()
