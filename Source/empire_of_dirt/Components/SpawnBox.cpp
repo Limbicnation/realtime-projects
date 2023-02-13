@@ -37,8 +37,8 @@ void ASpawnBox::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 bool ASpawnBox::SpawnActor()
-{
-	bool SpawnedActor = false;
+{	// Enable spawning
+	bool SpawnedActor = true;
 	if (ActorClassToBeSpawned)
 	{
 		// Calculate the extends of the box
@@ -56,6 +56,23 @@ bool ASpawnBox::SpawnActor()
 	}
 
 	return SpawnedActor;
+}
+
+void ASpawnBox::EnableActorSpawning(bool Enable)
+{
+	// Update internal 
+	ShouldSpawn = Enable;
+
+	// Check if timer action is done
+	if (Enable)
+	{
+		ScheduleActorSpawn();
+	}
+	else
+	{
+		GetWorld()->GetTimerManager().ClearTimer(SpawnTimerHandle);
+	}
+
 }
 
 void ASpawnBox::ScheduleActorSpawn()

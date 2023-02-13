@@ -30,11 +30,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool SpawnActor();
 
-	// will schedule an actor spawn
-	void ScheduleActorSpawn();
+	// Change if actors are spawned
+	UFUNCTION(BlueprintCallable)
+	void EnableActorSpawning(bool Enable);
+
 private:
 	UFUNCTION()
 	void SpawnActorScheduled();
+
+	// Will schedule an actor spawn 
+void ScheduleActorSpawn();
 
 public:
 		// Actor class to spawn
