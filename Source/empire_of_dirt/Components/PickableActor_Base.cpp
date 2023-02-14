@@ -11,12 +11,16 @@ APickableActor_Base::APickableActor_Base()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Create the static mesh component
-	//MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
-	//RootComponent = MeshComp;
+	//Create the static mesh component
+	UStaticMeshComponent* MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
+	MeshComp->SetMobility(EComponentMobility::Movable);
+	MeshComp->SetupAttachment(RootComponent);
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// initialize the sphere component
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
+	MeshComp->SetupAttachment(CollisionComp);
+	SetRootComponent(MeshComp);
 
 	// initialize the sphere component with a default radius of 30.0f
 	CollisionComp->InitSphereRadius(30.0f);
@@ -27,9 +31,9 @@ APickableActor_Base::APickableActor_Base()
 	// Set collision comp as root component
 	RootComponent = CollisionComp;
 
-	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
+	/*MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	SetRootComponent(MeshComp);
-	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);*/
 
 	// Add rotation
 	RotationComp = CreateDefaultSubobject<URotatingMovementComponent>(TEXT("RotationComp"));

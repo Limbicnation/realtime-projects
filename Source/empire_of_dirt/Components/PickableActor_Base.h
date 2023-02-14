@@ -20,14 +20,14 @@ protected:
 	virtual void BeginPlay() override;
 
 	// Detecting overlap collision
-	UPROPERTY(VisibleDefaultsOnly, Category = PickableItem)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickableItem)
 	class USphereComponent* CollisionComp;
 
 	// visually representing the packable item
-	UPROPERTY(VisibleDefaultsOnly, Category = PickableItem)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickableItem)
 	class UStaticMeshComponent* MeshComp;
 	// giving the packable item a rotational value
-	UPROPERTY(VisibleDefaultsOnly, Category = PickableItem)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickableItem)
 	class URotatingMovementComponent* RotationComp;
 
 
