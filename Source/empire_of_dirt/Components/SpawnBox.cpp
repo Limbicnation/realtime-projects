@@ -25,7 +25,6 @@ void ASpawnBox::BeginPlay()
 	{
 		ScheduleActorSpawn();
 	}
-	
 }
 
 void ASpawnBox::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -37,7 +36,8 @@ void ASpawnBox::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 bool ASpawnBox::SpawnActor()
-{	// Enable spawning
+{	
+	// Enable spawning
 	bool SpawnedActor = true;
 	if (ActorClassToBeSpawned)
 	{
@@ -51,7 +51,27 @@ bool ASpawnBox::SpawnActor()
 		SpawnLocation.Z += -BoxBounds.BoxExtent.Z + 2 * BoxBounds.BoxExtent.Z * FMath::FRand();
 
 		// Spawn the actor
-		GetWorld()->SpawnActor(ActorClassToBeSpawned, &SpawnLocation);
+		AActor* SpawnedActor = GetWorld()->SpawnActor(ActorClassToBeSpawned, &SpawnLocation);
+
+		// Get the child static mesh component of the spawned actor
+		UStaticMeshComponent* ChildStaticMesh = Cast<UStaticMeshComponent>(SpawnedActor->GetComponentByClass(UStaticMeshComponent::StaticClass()));
+		if (ChildStaticMesh)
+		{
+			// Generate a different random scale for each instance of the spawned actor
+			ChildStaticMesh->SetWorldScale3D(FVector(FMath::RandRange(0.5f, 5.0f), FMath::RandRange(0.5f, 5.0f), FMath::RandRange(0.5f, 5.0f)));
+
+			// Get the current velocity of the static mesh component
+			FVector CurrentVelocity = ChildStaticMesh->GetPhysicsLinearVelocity();
+
+			// Check if the static mesh component is on the ground
+			if (CurrentVelocity.Z < 0.01f)
+			{
+				// Apply force to the x axis
+				const float ForceMagnitude = 1000.0f;
+				FVector ForceVector = FVector(ForceMagnitude, 500.0f, 0.0f);
+				ChildStaticMesh->AddForce(ForceVector);
+			}
+		}
 
 	}
 

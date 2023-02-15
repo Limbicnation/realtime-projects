@@ -19,8 +19,7 @@ APickableActor_Base::APickableActor_Base()
 
 	// initialize the sphere component
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
-	MeshComp->SetupAttachment(CollisionComp);
-	SetRootComponent(MeshComp);
+	CollisionComp->SetupAttachment(MeshComp);
 
 	// initialize the sphere component with a default radius of 30.0f
 	CollisionComp->InitSphereRadius(30.0f);
@@ -29,7 +28,7 @@ APickableActor_Base::APickableActor_Base()
 	CollisionComp->BodyInstance.SetCollisionProfileName("OverlapAllDynamic");
 
 	// Set collision comp as root component
-	RootComponent = CollisionComp;
+	CollisionComp->BodyInstance.SetCollisionProfileName("OverlapAllDynamic");
 
 	/*MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	SetRootComponent(MeshComp);
@@ -44,6 +43,10 @@ APickableActor_Base::APickableActor_Base()
 void APickableActor_Base::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// generate a different random scale for each instance of the static mesh
+	MeshComp->SetWorldScale3D(FVector(FMath::RandRange(0.5f, 20.0f), FMath::RandRange(0.5f, 20.0f), FMath::RandRange(0.5f, 20.0f)));
+
+
 }
 

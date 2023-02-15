@@ -33,6 +33,10 @@ protected:
 
 public:
 
+private:
+
+	// Random scale for static Mesh Component
+	FVector RandomScale;
 
 };
 
