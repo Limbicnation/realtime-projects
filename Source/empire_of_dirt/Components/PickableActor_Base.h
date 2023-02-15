@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright notice goes here
 
 #pragma once
 
@@ -12,31 +12,30 @@ class EMPIRE_OF_DIRT_API APickableActor_Base : public AActor
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
 	APickableActor_Base();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	// Detecting overlap collision
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickableItem)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickable Item")
 	class USphereComponent* CollisionComp;
 
 	// visually representing the packable item
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickableItem)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickable Item")
 	class UStaticMeshComponent* MeshComp;
+
 	// giving the packable item a rotational value
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickableItem)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickable Item")
 	class URotatingMovementComponent* RotationComp;
 
-
-public:
+	// Set up the collision callback function to be called when a collision is detected
+	UFUNCTION()
+	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 private:
 
 	// Random scale for static Mesh Component
 	FVector RandomScale;
-
 };
-

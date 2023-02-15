@@ -66,10 +66,9 @@ bool ASpawnBox::SpawnActor()
 			// Check if the static mesh component is on the ground
 			if (CurrentVelocity.Z < 0.01f)
 			{
-				// Apply force to the x axis
-				const float ForceMagnitude = 1000.0f;
-				FVector ForceVector = FVector(ForceMagnitude, 500.0f, 0.0f);
-				ChildStaticMesh->AddForce(ForceVector);
+				float ForceMagnitude = 1000.0f;
+				FVector Force = FVector(ForceMagnitude, 0.0f, 0.0f);
+				ChildStaticMesh->AddForce(Force, NAME_None, true);
 			}
 		}
 
