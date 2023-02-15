@@ -26,6 +26,9 @@ AItem::AItem()
 void AItem::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Hide Pickup Widget
+	PickupWidget->SetVisibility(false);
 	
 }
 
