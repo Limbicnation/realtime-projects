@@ -64,5 +64,8 @@ private:
 	// Helper for timing
 	FTimerHandle SpawnTimerHandle;
 
+	// Random scale for static Mesh Component
+	FVector RandomScale;
+
 
 };
