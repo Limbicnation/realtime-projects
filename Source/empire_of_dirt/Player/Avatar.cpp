@@ -163,6 +163,8 @@ void AAvatar::EndSprinting()
 
 void AAvatar::shoot()
 {
+	UE_LOG(LogTemp, Warning, TEXT("shoot"))
+	
 	// handle SFX for shooting
 
 	if (ShootSound)
