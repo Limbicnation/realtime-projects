@@ -86,7 +86,7 @@ protected:
 	float SprintingValue;
 
 	UPROPERTY(EditAnywhere)
-	float BulletForce;
+	float BulletOffset;
 
 	UPROPERTY(EditAnywhere)
 	float WalkingValue;
