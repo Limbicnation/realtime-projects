@@ -49,6 +49,8 @@ ASciFiPawn::ASciFiPawn()
 
 	BulletOffset = 600.0f;
 
+	BulletSpeed = FVector(0.0f, 0.0f, 5000.0f);
+
 	// Default Bullet mesh scale
 	BulletScale = 1.f;
 }
@@ -242,6 +244,14 @@ void ASciFiPawn::Shoot()
 		BulletSpawnTransform.SetRotation(GetActorRotation().Quaternion());
 		BulletSpawnTransform.SetScale3D(FVector(BulletScale));
 
-		GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+		//GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+		//Set the velocity of the Bullet
+		FVector BulletSpeed = GetActorForwardVector() * BulletSpeed;
+		
+		if (Bullet)
+		{
+			Bullet->BulletSpeed = BulletSpeed; 
+		}
 	}
 }
