@@ -47,6 +47,8 @@ ASciFiPawn::ASciFiPawn()
 
 	WalkingValue = 2.0f;
 
+	BulletForce = 600.0f;
+
 	// Default Bullet mesh scale
 	BulletScale = 1.f;
 }
@@ -236,7 +238,7 @@ void ASciFiPawn::Shoot()
 
 		// Bullet Transforms
 		FTransform BulletSpawnTransform;
-		BulletSpawnTransform.SetLocation(GetActorForwardVector() * 500.f + GetActorLocation());
+		BulletSpawnTransform.SetLocation(GetActorForwardVector() * BulletForce + GetActorLocation());
 		BulletSpawnTransform.SetRotation(GetActorRotation().Quaternion());
 		BulletSpawnTransform.SetScale3D(FVector(BulletScale));
 
