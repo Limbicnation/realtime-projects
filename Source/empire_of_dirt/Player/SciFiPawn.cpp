@@ -10,6 +10,8 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundCue.h"
 
 
 // Sets default Values
@@ -233,6 +235,12 @@ void ASciFiPawn::Shoot()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
 	}
+	
+	if (FireSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FireSound);
+	}
+	
 	if (BulletClass)
 	{
 		FActorSpawnParameters SpawnParams;

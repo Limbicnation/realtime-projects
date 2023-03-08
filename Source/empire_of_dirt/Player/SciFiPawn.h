@@ -96,6 +96,13 @@ protected:
 	UPROPERTY(EditAnywhere)
 	FVector BulletSpeed;
 
+private:
+
+	// Declare the Sound Cue
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = USE_COMPILED_IN_NATIVES, meta = (AllowPrivateAccess = "true"))
+	class USoundCue* FireSound;
+	
+	
 public:
 
 	/*Interaction*/
