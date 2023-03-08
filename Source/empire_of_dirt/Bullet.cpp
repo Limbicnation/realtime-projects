@@ -51,6 +51,10 @@ void ABullet::Tick(float DeltaTime)
 	{
 		if (HitResult.GetActor())
 		{
+			/**
+			FActorSpawnParameters SpawnParams;
+			ABullet* SpawnedBullet = GetWorld()->SpawnActor<ABullet>(ClassReference, SpawnLocation, SpawnRotation, SpawnParams);*/
+
 			DrawDebugSolidBox(GetWorld(), HitResult.ImpactPoint, FVector(500.f), FColor::Blue, true);
 			AActor* Mesh = Cast<AActor>(HitResult.GetActor());
 
@@ -72,7 +76,7 @@ void ABullet::Tick(float DeltaTime)
 			}
 			
 		}
-		Destroy();
+		//Destroy();
 	}
 	else
 	{

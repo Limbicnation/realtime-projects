@@ -229,6 +229,10 @@ void ASciFiPawn::EndSprint()
 
 void ASciFiPawn::Shoot()
 {
+	// Log Temp warning for firing a weapon
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
+	}
 	if (BulletClass)
 	{
 		FActorSpawnParameters SpawnParams;
