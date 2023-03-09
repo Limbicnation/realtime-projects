@@ -14,6 +14,11 @@ class EMPIRE_OF_DIRT_API ABullet : public AActor
 	GENERATED_BODY()
 
 public:
+
+	// Set the velocity of the bullet
+	UFUNCTION(BlueprintCallable, Category = "Bullet")
+	void SetVelocity(const FVector& NewVelocity);
+
 	/** Sets default values for this actor's properties. */
 	ABullet();
 

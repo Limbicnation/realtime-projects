@@ -6,6 +6,11 @@
 #include "DrawDebugHelpers.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
+void ABullet::SetVelocity(const FVector& NewVelocity)
+{
+	BulletMesh->SetPhysicsLinearVelocity(NewVelocity);
+}
+
 // Sets default values
 ABullet::ABullet()
 {

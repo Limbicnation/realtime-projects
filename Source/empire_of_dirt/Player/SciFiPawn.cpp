@@ -233,36 +233,72 @@ void ASciFiPawn::EndSprint()
 
 void ASciFiPawn::Shoot()
 {
-	// Log Temp warning for firing a weapon
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
-	}
+    // Log Temp warning for firing a weapon
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
+    }
+
+    if (BulletClass == nullptr)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("BulletClass is nullptr"));
+        return;
+    }
+
+    if (GetWorld() == nullptr)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("GetWorld() returned nullptr"));
+        return;
+    }
 	
-	{
-		if (BulletClass == nullptr)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("BulletClass is nullptr"));
-			return;
-		}
+	// Define the Trace Distance
+	float TraceDistance = 10000.f;
 
-		if (GetWorld() == nullptr)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("GetWorld() returned nullptr"));
-			return;
-		}
+    // Calculate the start and end points of the line trace
+    FVector StartTrace = Camera->GetComponentLocation();
+    FVector EndTrace = StartTrace + Camera->GetForwardVector() * TraceDistance;
 
-		// Calculate the spawn location and rotation for the bullet
-		FVector SpawnLocation = Camera->GetComponentLocation() + Camera->GetForwardVector() * BulletOffset;
-		FRotator SpawnRotation = Camera->GetComponentRotation();
+    // Set up the collision parameters for the line trace
+    FCollisionQueryParams CollisionParams;
+    CollisionParams.AddIgnoredActor(this);
 
-		// Spawn the bullet and set its velocity
-		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation);
-		if (Bullet != nullptr)
-		{
-			FVector BulletDirection = SpawnRotation.Vector();
-			BulletDirection.Normalize();
-			//Bullet->SetVelocity(BulletDirection * BulletSpeed);
-		}
-	}
+    // Perform the line trace
+    FHitResult HitResult;
+    if (GetWorld()->LineTraceSingleByChannel(HitResult, StartTrace, EndTrace, ECC_Visibility, CollisionParams))
+    {
+        if (HitResult.GetActor())
+        {
+            // Attach the bullet mesh to the hit point
+            FVector BulletLocation = HitResult.ImpactPoint;
+            FRotator BulletRotation = FRotator::ZeroRotator;
+            ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, BulletLocation, BulletRotation);
+            if (Bullet != nullptr)
+            {
+                Bullet->AttachToActor(HitResult.GetActor(), FAttachmentTransformRules::KeepWorldTransform);
+                Bullet->SetVelocity(FVector::ZeroVector);
+            }
 
+            // Change the material of the hit object
+            AActor* Mesh = Cast<AActor>(HitResult.GetActor());
+            UStaticMeshComponent* StaticMeshComponent = Mesh->FindComponentByClass<UStaticMeshComponent>();
+            UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave.MI_QuadTruchetWeave'"));
+            if (StaticMeshComponent && MaterialInterface)
+            {
+                StaticMeshComponent->SetMaterial(0, MaterialInterface);
+            }
+            else
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Could not get mesh. Type is %s"), *HitResult.GetActor()->StaticClass()->GetFName().ToString()));
+            }
+        }
+    }
+    else
+    {
+        // Spawn the bullet at the end of the line trace
+        ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, EndTrace, FRotator::ZeroRotator);
+        if (Bullet != nullptr)
+        {
+            Bullet->SetVelocity(Camera->GetForwardVector() * BulletSpeed);
+        }
+    }
 }
+
