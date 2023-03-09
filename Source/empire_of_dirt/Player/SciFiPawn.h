@@ -72,6 +72,7 @@ protected:
 	// This function will shoot a projectile when called
 	void Shoot();
 
+	// Projectile class to spawn
 	UPROPERTY(EditAnywhere, Category = "shooting")
 	TSubclassOf<class ABullet> BulletClass;
 
@@ -86,8 +87,22 @@ protected:
 	float SprintingValue;
 
 	UPROPERTY(EditAnywhere)
+	float BulletOffset;
+
+	UPROPERTY(EditAnywhere)
 	float WalkingValue;
 
+	// Public Speed variable for the Bullet class
+	UPROPERTY(EditAnywhere)
+	FVector BulletSpeed;
+
+private:
+
+	// Declare the Sound Cue
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = USE_COMPILED_IN_NATIVES, meta = (AllowPrivateAccess = "true"))
+	class USoundCue* FireSound;
+	
+	
 public:
 
 	/*Interaction*/

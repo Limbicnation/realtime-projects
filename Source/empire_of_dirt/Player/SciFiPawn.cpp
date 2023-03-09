@@ -10,6 +10,8 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundCue.h"
 
 
 // Sets default Values
@@ -46,6 +48,10 @@ ASciFiPawn::ASciFiPawn()
 	SprintingValue = 16.0f;
 
 	WalkingValue = 2.0f;
+
+	BulletOffset = 600.0f;
+
+	BulletSpeed = FVector(0.0f, 0.0f, 5000.0f);
 
 	// Default Bullet mesh scale
 	BulletScale = 1.f;
@@ -225,6 +231,16 @@ void ASciFiPawn::EndSprint()
 
 void ASciFiPawn::Shoot()
 {
+	// Log Temp warning for firing a weapon
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
+	}
+	
+	if (FireSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FireSound);
+	}
+	
 	if (BulletClass)
 	{
 		FActorSpawnParameters SpawnParams;
@@ -236,10 +252,18 @@ void ASciFiPawn::Shoot()
 
 		// Bullet Transforms
 		FTransform BulletSpawnTransform;
-		BulletSpawnTransform.SetLocation(GetActorForwardVector() * 500.f + GetActorLocation());
+		BulletSpawnTransform.SetLocation(GetActorForwardVector() * BulletOffset + GetActorLocation());
 		BulletSpawnTransform.SetRotation(GetActorRotation().Quaternion());
 		BulletSpawnTransform.SetScale3D(FVector(BulletScale));
 
-		GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+		//GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+		//Set the velocity of the Bullet
+		FVector BulletSpeed = GetActorForwardVector() * BulletSpeed;
+		
+		if (Bullet)
+		{
+			Bullet->BulletSpeed = BulletSpeed; 
+		}
 	}
 }
