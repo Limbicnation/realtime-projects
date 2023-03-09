@@ -4,6 +4,7 @@
 #include "Bullet.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/GameplayStatics.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 
@@ -53,11 +54,44 @@ void ABullet::Tick(float DeltaTime)
 	// If the line trace hits the player itself, it will just ignore it
 	CollisionParams.AddIgnoredActor(this);
 
+	// Set the tag you want to check for
+	FName ComponentTag = FName("MyObelisk");
+
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, StartTrace, EndTrace, ECC_Visibility, CollisionParams))
 	{
+		// Check if a line trace hits any actor with the specified component tag
 		UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
 		if (StaticMeshComponent)
 		{
+			{
+				UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
+				if (StaticMeshComponent && StaticMeshComponent->ComponentHasTag("MyObelisk"))
+				{
+					AActor* HitActor = StaticMeshComponent->GetOwner();
+					if (HitActor && HitActor->ActorHasTag("BP_ObeliskDestroy"))
+					{
+						HitActor->ProcessEvent(HitActor->FindFunction("DestroyObelisk"), nullptr);
+					}
+				}
+				// Check if the hit actor is the desired one
+				AActor* HitActor = HitResult.GetActor();
+				if (HitActor && HitActor->ActorHasTag("BP_ObeliskDestroy_2"))
+				{
+					// Call the custom event on the hit actor
+					HitActor->ProcessEvent(HitActor->FindFunction("DestroyObelisk"), nullptr);
+					UE_LOG(LogTemp, Warning, TEXT("Line trace hit: %s"), *HitActor->GetName());
+				}
+				// Check if the HitResult has an actor and logs a warning message to the console that includes the name of the actor that was hit by the line trace.
+				if (HitResult.GetActor())
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Line trace hit: %s"), *HitResult.GetActor()->GetName());
+				}
+			}
+			if (!StaticMeshComponent)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Hit component is not a static mesh component with tag 'MyObelisk'"));
+			}
+
 			// Create an array of the material paths
 			TArray<FString> MaterialPaths;
 			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave1.MI_QuadTruchetWeave1'"));
@@ -70,6 +104,10 @@ void ABullet::Tick(float DeltaTime)
 
 			// Load the material at the random index
 			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, *MaterialPaths[MaterialIndex]);
+
+			// Play a sound cue at the hit location
+			USoundBase* SoundCue = LoadObject<USoundBase>(nullptr, TEXT("SoundCue'/Game/_Game/Assets/Sounds/Glitch/SC_Glitch.SC_Glitch'"));
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundCue, HitResult.ImpactPoint);
 
 			if (MaterialInterface)
 			{
