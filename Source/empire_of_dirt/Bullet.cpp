@@ -6,6 +6,7 @@
 #include "DrawDebugHelpers.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
+
 void ABullet::SetVelocity(const FVector& NewVelocity)
 {
 	BulletMesh->SetPhysicsLinearVelocity(NewVelocity);
@@ -34,6 +35,7 @@ ABullet::ABullet()
 void ABullet::BeginPlay()
 {
 	Super::BeginPlay();
+
 }
 
 // Called every frame
@@ -53,30 +55,18 @@ void ABullet::Tick(float DeltaTime)
 
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, StartTrace, EndTrace, ECC_Visibility, CollisionParams))
 	{
-		if (HitResult.GetActor())
+		UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
+		if (StaticMeshComponent)
 		{
-			DrawDebugSolidBox(GetWorld(), HitResult.ImpactPoint, FVector(500.f), FColor::Blue, true);
-			AActor* Mesh = Cast<AActor>(HitResult.GetActor());
-
-			// Get the static mesh component
-			UStaticMeshComponent* StaticMeshComponent = Mesh->FindComponentByClass<UStaticMeshComponent>();
-
-			// Get the static mesh material
-			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave.MI_QuadTruchetWeave'")); 
- 
-			if (StaticMeshComponent && MaterialInterface)
+			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave.MI_QuadTruchetWeave'"));
+			if (StaticMeshComponent)
 			{
-				// Set the material on the first material slot of the mesh
-				StaticMeshComponent->SetMaterial(0, MaterialInterface);
+				for (int32 i = 0; i < StaticMeshComponent->GetNumMaterials(); ++i)
+				{
+					StaticMeshComponent->SetMaterial(i, MaterialInterface);
+				}
 			}
-
-			else
-			{
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Could not get mesh. Type is %s"), *HitResult.GetActor()->StaticClass()->GetFName().ToString()));
-			}
-			
 		}
-		Destroy();
 	}
 	else
 	{
@@ -87,7 +77,7 @@ void ABullet::Tick(float DeltaTime)
 
 		BulletMesh->SetWorldLocation(EndTrace);
 
-		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, EndTrace, FRotator::ZeroRotator);
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass,EndTrace, FRotator::ZeroRotator);
 		if (Bullet != nullptr)
 		{
 			FVector BulletDirection = EndTrace - StartTrace;
