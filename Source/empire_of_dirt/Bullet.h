@@ -15,6 +15,9 @@ class EMPIRE_OF_DIRT_API ABullet : public AActor
 
 public:
 
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+	TSubclassOf<class ABullet> BulletClass;
+
 	// Set the velocity of the bullet
 	UFUNCTION(BlueprintCallable, Category = "Bullet")
 	void SetVelocity(const FVector& NewVelocity);

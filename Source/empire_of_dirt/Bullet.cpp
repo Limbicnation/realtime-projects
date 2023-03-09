@@ -81,12 +81,20 @@ void ABullet::Tick(float DeltaTime)
 	else
 	{
 		BulletExpiry += DeltaTime;
-		
-		// Draw Debug Line and specify the true argument to make the debug line persistent
-		DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(FColor(0.0f, -BulletExpiry * 80.0f, 100.0f)),true);
 
-		SetActorLocation(EndTrace);
-		
+		// Draw Debug Line and specify the true argument to make the debug line persistent
+		DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(FColor(0.0f, -BulletExpiry * 80.0f, 100.0f)), true);
+
+		BulletMesh->SetWorldLocation(EndTrace);
+
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, EndTrace, FRotator::ZeroRotator);
+		if (Bullet != nullptr)
+		{
+			FVector BulletDirection = EndTrace - StartTrace;
+			BulletDirection.Normalize();
+			Bullet->SetVelocity(BulletDirection * BulletSpeed);
+		}
+
 		BulletSpeed += FVector(0.0f, 0.0f, -200.0f) * DeltaTime;
 	}
 	
