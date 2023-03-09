@@ -42,6 +42,10 @@ public:
 	// Sets default values for this pawn's properties
 	ASciFiPawn();
 
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	virtual void Tick(float DeltaTime) override;
+
 	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* PlayerMesh;
 
@@ -53,6 +57,7 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	class UFloatingPawnMovement* PlayerMovement;
+
 
 
 protected:
@@ -82,7 +87,6 @@ protected:
 
 	bool bIsSprinting = false;
 
-
 	UPROPERTY(EditAnywhere)
 	float SprintingValue;
 
@@ -98,16 +102,19 @@ protected:
 
 private:
 
-	// Declare the Sound Cue
+	// Randomized gunshot sound cue
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = USE_COMPILED_IN_NATIVES, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* FireSound;
-	
-	
+
+	// Flash spawned at barrel socket
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = USE_COMPILED_IN_NATIVES, meta = (AllowPrivateAccess = "true"))
+	class UParticleSystem* MuzzleFlash;
+
 public:
 
 	/*Interaction*/
 
-	//How often in seconds to check for an interactable object. Set this to zero if you want to check every tick.
+	// How often in seconds to check for an interactable object. Set this to zero if you want to check every tick.
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
 	float InteractionCheckFrequency;
 
@@ -118,9 +125,11 @@ public:
 	void PerformInteractionCheck();
 
 	void CouldntFindInteractable();
+
 	void FoundNewInteractable(UInteractionComponent* Interactable);
 
 	void BeginInteract();
+
 	void EndInteract();
 
 	void Interact();
@@ -129,38 +138,34 @@ public:
 	UPROPERTY()
 	FInteractionData InteractionData;
 
-	//Helper function to make grabbing interactable faster
+	// Helper function to make grabbing interactable faster
 	FORCEINLINE class UInteractionComponent* GetInteractable() const
 	{
 		return InteractionData.ViewedInteractionComponent;
 	}
 
 	FTimerHandle TimerHandle_Interact;
-
-public:
-
+	
 	//True if we're interacting with an item that has an interaction time (for example a lamp that takes 2 seconds to turn on)
 	bool IsInteracting() const;
 
 	//Get the time till we interact with the current interactable
 	float GetRemainingInteractTime() const;
-
-public:
-
-	// Called every frame
-	void Tick(float DeltaTime) override;
-
-	// Called to bind functionality to input
-	void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	
+	/* Movement */
 
 	void Jump();
 
 	void MoveForward(float value);
+
 	void MoveRight(float value);
 
 	void MoveUp(float value);
+
 	void MoveDown(float value);
 
 	void Turn(float value);
+
 	void LookUp(float value);
+	
 };

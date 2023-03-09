@@ -172,7 +172,6 @@ void AAvatar::shoot()
 		UGameplayStatics::PlaySound2D(this, ShootSound);
 	}
 
-	if (BulletClass) 
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -187,6 +186,5 @@ void AAvatar::shoot()
 
 		GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
 	}
-
 
 }
