@@ -2,9 +2,9 @@
 
 
 #include "Bullet.h"
-#include "Classes/Components/StaticMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
-#include "Classes/GameFramework/ProjectileMovementComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values
 ABullet::ABullet()
@@ -13,17 +13,16 @@ ABullet::ABullet()
 	PrimaryActorTick.bCanEverTick = true;
 
 	BulletMesh = CreateDefaultSubobject<UStaticMeshComponent>("BulletMesh");
-
 	SetRootComponent(BulletMesh);
 
-	// in initialize the Scene Component for Spawning the bullet class
+	// initialize the Scene Component for Spawning the bullet class
 	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComp"));
 	
 	RootComponent = RootComp;
 	
 	BulletMovement = CreateDefaultSubobject<UProjectileMovementComponent>("BulletMovement");
-	BulletMovement->InitialSpeed = BulletSpeed.Z; // Use the Public speed variable instead of hardcoding
-	BulletMovement->MaxSpeed = BulletSpeed.Z; // Use the public speed variable instead of hardcoding
+	BulletMovement->InitialSpeed = 5000.0f;
+	BulletMovement->MaxSpeed = 500.0f;
 }
 
 // Called when the game starts or when spawned
@@ -51,10 +50,6 @@ void ABullet::Tick(float DeltaTime)
 	{
 		if (HitResult.GetActor())
 		{
-			/**
-			FActorSpawnParameters SpawnParams;
-			ABullet* SpawnedBullet = GetWorld()->SpawnActor<ABullet>(ClassReference, SpawnLocation, SpawnRotation, SpawnParams);*/
-
 			DrawDebugSolidBox(GetWorld(), HitResult.ImpactPoint, FVector(500.f), FColor::Blue, true);
 			AActor* Mesh = Cast<AActor>(HitResult.GetActor());
 
@@ -76,7 +71,7 @@ void ABullet::Tick(float DeltaTime)
 			}
 			
 		}
-		//Destroy();
+		Destroy();
 	}
 	else
 	{
@@ -89,6 +84,7 @@ void ABullet::Tick(float DeltaTime)
 		
 		BulletSpeed += FVector(0.0f, 0.0f, -200.0f) * DeltaTime;
 	}
+	
 	if(BulletExpiry > 3)
 	{
 		Destroy();

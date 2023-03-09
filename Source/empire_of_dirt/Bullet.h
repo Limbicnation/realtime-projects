@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,35 +5,42 @@
 #include "Components/StaticMeshComponent.h"
 #include "Bullet.generated.h"
 
+/**
+ * A projectile fired from a weapon.
+ */
 UCLASS()
 class EMPIRE_OF_DIRT_API ABullet : public AActor
 {
 	GENERATED_BODY()
 
-
 public:
-	// Sets default values for this actor's properties
+	/** Sets default values for this actor's properties. */
 	ABullet();
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
-	FVector BulletSpeed = FVector(10000.0f); // This is the public speed variable we added for the bullet class
 
-	USceneComponent* RootComp;
-
-	float BulletExpiry = 0;
-
-protected:
-	// Called when the game starts or when spawned
-	// set to 'void' when error keeps happening
-	void BeginPlay() override;
-
-	UPROPERTY(EditAnywhere, Category = "Componets", meta = (AllowPrivateAccess = true))
+	/** The bullet's static mesh component. */
+	UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
 	UStaticMeshComponent* BulletMesh;
 
-	UPROPERTY(EditAnywhere, Category = "Componets", meta = (AllowPrivateAccess = true))
-	class UProjectileMovementComponent* BulletMovement;
+	/** The bullet's movement component. */
+	UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
+	UProjectileMovementComponent* BulletMovement;
 
+	/** The speed of the bullet. */
+	UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
+	FVector BulletSpeed = FVector(10000.0f);
+
+protected:
+	/** Called when the game starts or when spawned. */
+	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
-	void Tick(float DeltaTime) override;
+	/** Called every frame. */
+	virtual void Tick(float DeltaTime) override;
+
+private:
+	/** The root component of the bullet. */
+	USceneComponent* RootComp;
+
+	/** The amount of time that has passed since the bullet was fired. */
+	float BulletExpiry = 0;
 };

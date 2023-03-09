@@ -12,6 +12,8 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "GameFramework/Character.h"
 
 
 // Sets default Values
@@ -54,7 +56,7 @@ ASciFiPawn::ASciFiPawn()
 	BulletSpeed = FVector(0.0f, 0.0f, 5000.0f);
 
 	// Default Bullet mesh scale
-	BulletScale = 1.f;
+	BulletScale = 100.f;
 }
 
 // Called when the game starts or when spawned
@@ -236,34 +238,31 @@ void ASciFiPawn::Shoot()
 		UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
 	}
 	
-	if (FireSound)
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
-	}
-	
-	if (BulletClass)
-	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		// No way that the spawner can fail
-		SpawnParams.bNoFail = true;
-		SpawnParams.Owner = this;
-		SpawnParams.Instigator = this;
-
-		// Bullet Transforms
-		FTransform BulletSpawnTransform;
-		BulletSpawnTransform.SetLocation(GetActorForwardVector() * BulletOffset + GetActorLocation());
-		BulletSpawnTransform.SetRotation(GetActorRotation().Quaternion());
-		BulletSpawnTransform.SetScale3D(FVector(BulletScale));
-
-		//GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
-		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
-		//Set the velocity of the Bullet
-		FVector BulletSpeed = GetActorForwardVector() * BulletSpeed;
-		
-		if (Bullet)
+		if (BulletClass == nullptr)
 		{
-			Bullet->BulletSpeed = BulletSpeed; 
+			UE_LOG(LogTemp, Warning, TEXT("BulletClass is nullptr"));
+			return;
+		}
+
+		if (GetWorld() == nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GetWorld() returned nullptr"));
+			return;
+		}
+
+		// Calculate the spawn location and rotation for the bullet
+		FVector SpawnLocation = Camera->GetComponentLocation() + Camera->GetForwardVector() * BulletOffset;
+		FRotator SpawnRotation = Camera->GetComponentRotation();
+
+		// Spawn the bullet and set its velocity
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation);
+		if (Bullet != nullptr)
+		{
+			FVector BulletDirection = SpawnRotation.Vector();
+			BulletDirection.Normalize();
+			//Bullet->SetVelocity(BulletDirection * BulletSpeed);
 		}
 	}
+
 }
