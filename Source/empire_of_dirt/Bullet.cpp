@@ -58,8 +58,20 @@ void ABullet::Tick(float DeltaTime)
 		UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
 		if (StaticMeshComponent)
 		{
-			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave.MI_QuadTruchetWeave'"));
-			if (StaticMeshComponent)
+			// Create an array of the material paths
+			TArray<FString> MaterialPaths;
+			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave1.MI_QuadTruchetWeave1'"));
+			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_EndlessTunnel_3.MI_EndlessTunnel_3'"));
+			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev.MI_NoiseWorleyChebyshev'"));
+			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_FresnelRefraction.MI_FresnelRefraction'"));
+
+			// Get a random index for the material
+			int32 MaterialIndex = FMath::RandRange(0, MaterialPaths.Num() - 1);
+
+			// Load the material at the random index
+			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, *MaterialPaths[MaterialIndex]);
+
+			if (MaterialInterface)
 			{
 				for (int32 i = 0; i < StaticMeshComponent->GetNumMaterials(); ++i)
 				{
