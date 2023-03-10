@@ -10,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Animation/AnimMontage.h"
 #include "Sound/SoundCue.h"
 
 
@@ -185,6 +186,13 @@ void AAvatar::shoot()
 		BulletSpawnTransform.SetScale3D(FVector(1.f));
 
 		GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+	}
+	/** Plays the specified Montage Anim Instance */
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && FireMontage) 
+	{
+		AnimInstance->Montage_Play(FireMontage);
+		AnimInstance->Montage_JumpToSection(FName("FireWeapon"));
 	}
 
 }

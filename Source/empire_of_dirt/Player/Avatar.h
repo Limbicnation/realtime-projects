@@ -104,6 +104,10 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* ShootSound;
 
+	/** Montage for firing the weapon */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UAnimMontage* FireMontage;
+
 
 public:
 	/** Returns camera boom sub object */
