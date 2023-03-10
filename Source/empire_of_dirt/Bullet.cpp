@@ -5,6 +5,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/FileHelper.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 
@@ -92,21 +93,33 @@ void ABullet::Tick(float DeltaTime)
 				UE_LOG(LogTemp, Warning, TEXT("Hit component is not a static mesh component with tag 'MyObelisk'"));
 			}
 
-			// Create an array of the material paths
-			TArray<FString> MaterialPaths;
-			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave1.MI_QuadTruchetWeave1'"));
-			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_EndlessTunnel_3.MI_EndlessTunnel_3'"));
-			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev.MI_NoiseWorleyChebyshev'"));
-			MaterialPaths.Add(TEXT("Material'/Game/_Game/MaterialInstance/MI_FresnelRefraction.MI_FresnelRefraction'"));
+			// Create an array of the material instance paths
+			UPROPERTY(EditDefaultsOnly, Category = "Materials")
+			MaterialInstancePaths = { "/Game/_Game/MaterialInstance/MI_EndlessTunnel_3",
+										"/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev",
+										"/Game/_Game/MaterialInstance/MI_FresnelRefraction" };
+
+			TArray<TAssetPtr<UMaterialInstanceDynamic>> MaterialInstances;
+
+			for (const FString& MaterialInstancePath : MaterialInstancePaths)
+			{
+				const FString PrimaryAssetPath = FPackageName::ObjectPathToPackageName(MaterialInstancePath);
+				UMaterialInterface* MaterialInterface = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *PrimaryAssetPath, nullptr, LOAD_None, nullptr));
+				if (MaterialInterface)
+				{
+					UMaterialInstanceDynamic* MaterialInstance = UMaterialInstanceDynamic::Create(MaterialInterface, nullptr);
+					MaterialInstances.Add(MaterialInstance);
+				}
+			}
 
 			// Get a random index for the material
-			int32 MaterialIndex = FMath::RandRange(0, MaterialPaths.Num() - 1);
+			int32 MaterialIndex = FMath::RandRange(0, MaterialInstancePaths.Num() - 1);
 
 			// Load the material at the random index
-			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, *MaterialPaths[MaterialIndex]);
+			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, *MaterialInstancePaths[MaterialIndex]);
 
 			// Play a sound cue at the hit location
-			USoundBase* SoundCue = LoadObject<USoundBase>(nullptr, TEXT("SoundCue'/Game/_Game/Assets/Sounds/Glitch/SC_Glitch.SC_Glitch'"));
+			USoundBase* SoundCue = LoadObject<USoundBase>(nullptr, TEXT("/Game/_Game/Assets/Sounds/Glitch/SC_Glitch"));
 			UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundCue, HitResult.ImpactPoint);
 
 			if (MaterialInterface)

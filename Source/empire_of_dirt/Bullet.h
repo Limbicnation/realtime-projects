@@ -15,6 +15,10 @@ class EMPIRE_OF_DIRT_API ABullet : public AActor
 
 public:
 
+	// we declare a BlueprintReadWrite variable in the parent Blueprint class:
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Materials")
+	TArray<FString> MaterialInstancePaths;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
 	TSubclassOf<class ABullet> BulletClass;
 
