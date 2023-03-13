@@ -291,14 +291,16 @@ void ASciFiPawn::Shoot()
             }
         }
     }
-    else
-    {
-        // Spawn the bullet at the end of the line trace
-        ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, EndTrace, FRotator::ZeroRotator);
-        if (Bullet != nullptr)
-        {
-            Bullet->SetVelocity(Camera->GetForwardVector() * BulletSpeed);
-        }
-    }
+	else
+	{
+		// Spawn the bullet at the player's position and rotation
+		FVector PlayerLocation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
+		FRotator PlayerRotation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorRotation();
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, PlayerLocation, PlayerRotation);
+		if (Bullet != nullptr)
+		{
+			Bullet->SetVelocity(PlayerRotation.Vector() * BulletSpeed);
+		}
+	}
 }
 
