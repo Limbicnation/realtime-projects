@@ -12,6 +12,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Animation/AnimMontage.h"
 #include "Sound/SoundCue.h"
+#include "NiagaraFunctionLibrary.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "DrawDebugHelpers.h"
+#include "Kismet/KismetSystemLibrary.h"
+
 
 
 // Sets default values
@@ -172,7 +177,39 @@ void AAvatar::shoot()
 	{
 		UGameplayStatics::PlaySound2D(this, ShootSound);
 	}
+	/** Spawns the Niagara emitter at the location of the barrel socket. */
+	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
+	if (BarrelSocket)
+	{
+		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
 
+		if (MuzzleFlash)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.Rotator());
+		}
+
+		/** Perform our Line trace here */
+
+		FHitResult FireHit;
+		const FVector Start{ SocketTransform.GetLocation() };
+		const FQuat Rotation{ SocketTransform.GetRotation() };
+		FVector RotationAxis{ Rotation.GetAxisX() };
+		RotationAxis.X = 90.0f;
+
+		const FColor LineColor(255, 0, 0); // red color
+		const float DrawDuration = 5.f; // in seconds
+
+		const FVector End{ Start + RotationAxis * 50'000.0f };
+
+		GetWorld()->LineTraceSingleByChannel(FireHit, Start, End, ECollisionChannel::ECC_Visibility);
+		if (FireHit.bBlockingHit)
+		{
+			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, DrawDuration);
+			// create a line from start to end point with the given color and duration
+			DrawDebugPoint(GetWorld(), FireHit.Location, 50.f, FColor::Magenta);
+		}
+	}
+	
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;

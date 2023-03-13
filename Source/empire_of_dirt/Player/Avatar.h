@@ -20,7 +20,6 @@ class EMPIRE_OF_DIRT_API AAvatar : public ACharacter
 public:
 	// Sets default values for this character's properties
 	AAvatar();
-
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* CubeMesh;
 
@@ -108,6 +107,10 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* FireMontage;
 
+	/** Flash spawned at BarrelSocket */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UNiagaraSystem* MuzzleFlash;
+	
 
 public:
 	/** Returns camera boom sub object */
