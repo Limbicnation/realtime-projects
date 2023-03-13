@@ -1,8 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "CoreMinimal.h"
 #include "Bullet.generated.h"
 
 /**

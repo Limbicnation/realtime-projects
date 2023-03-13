@@ -12,6 +12,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Animation/AnimMontage.h"
 #include "Sound/SoundCue.h"
+#include "NiagaraFunctionLibrary.h"
+#include "Engine/SkeletalMeshSocket.h"
+
 
 
 // Sets default values
@@ -172,7 +175,19 @@ void AAvatar::shoot()
 	{
 		UGameplayStatics::PlaySound2D(this, ShootSound);
 	}
+	/** Spawns the Niagara emitter at the location of the barrel socket. */
+	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
+	if (BarrelSocket)
+	{
+		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
 
+		if (MuzzleFlash)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.Rotator());
+		}
+	
+	}
+	
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;

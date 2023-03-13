@@ -41,10 +41,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "Water",
-			"Enabled": true
-		},
-		{
 			"Name": "ShallowWater",
 			"Enabled": false
 		},
@@ -68,11 +64,27 @@
 		},
 		{
 			"Name": "DarkerNodes",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/4b3441f0228a40ec9ca986489a5bd682"
 		},
 		{
 			"Name": "ApexDestruction",
+			"Enabled": true
+		},
+		{
+			"Name": "AlembicImporter",
+			"Enabled": false
+		},
+		{
+			"Name": "GeometryCache",
+			"Enabled": false
+		},
+		{
+			"Name": "ChaosNiagara",
+			"Enabled": false
+		},
+		{
+			"Name": "Niagara",
 			"Enabled": true
 		}
 	]
