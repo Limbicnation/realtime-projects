@@ -138,11 +138,12 @@ void ABullet::Tick(float DeltaTime)
 		const float DrawDuration = 5.f; // in seconds
 
 		// Draw Debug Line and specify the true argument to make the debug line persistent
-		DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(FColor(0.0f, -BulletExpiry * 80.0f, 100.0f)), true);
+		if (BulletExpiry <= 3.f) // Add this condition to check if the time hasn't exceeded 3 seconds
+			DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(FColor(0.0f, -BulletExpiry * 80.0f, 100.0f)), true);
 
 		BulletMesh->SetWorldLocation(EndTrace);
 
-		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass,EndTrace, FRotator::ZeroRotator);
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, EndTrace, FRotator::ZeroRotator);
 		if (Bullet != nullptr)
 		{
 			FVector BulletDirection = EndTrace - StartTrace;
