@@ -97,7 +97,10 @@ void ABullet::Tick(float DeltaTime)
 			UPROPERTY(EditDefaultsOnly, Category = "Materials")
 			MaterialInstancePaths = { "/Game/_Game/MaterialInstance/MI_EndlessTunnel_3",
 										"/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev",
-										"/Game/_Game/MaterialInstance/MI_FresnelRefraction" };
+										"/Game/_Game/MaterialInstance/MI_FresnelRefraction", 
+										"/Game/_Game/MaterialInstance/MI_Twigl_01", 
+										"/Game/_Game/MaterialInstance/MI_VPCube" };
+		
 
 			TArray<TAssetPtr<UMaterialInstanceDynamic>> MaterialInstances;
 
