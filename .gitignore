@@ -13,4 +13,4 @@ Saved
 *.suo
 *.xcodeproj
 *.xcworkspace
-Plugins/
+/Plugins/HoudiniEngine/
