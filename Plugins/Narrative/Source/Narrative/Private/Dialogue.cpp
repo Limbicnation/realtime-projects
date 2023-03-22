@@ -430,7 +430,7 @@ void UDialogue::OnBeginDialogue_Implementation()
 		}
 	}
 }
-
+// Fix null pointer exception in UDialogue::OnEndDialogue_Implementation()
 void UDialogue::OnEndDialogue_Implementation()
 {
 	if (DialogueCameraShake)
