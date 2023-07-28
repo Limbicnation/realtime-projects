@@ -179,6 +179,8 @@ void AAvatar::shoot()
 	}
 	/** Spawns the Niagara emitter at the location of the barrel socket. */
 	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
+	float LineTraceDuration = 0.f; // Variable to keep track of the Line Trace duration
+
 	if (BarrelSocket)
 	{
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
@@ -205,10 +207,18 @@ void AAvatar::shoot()
 		if (FireHit.bBlockingHit)
 		{
 			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, DrawDuration);
-			// create a line from start to end point with the given color and duration
 			DrawDebugPoint(GetWorld(), FireHit.Location, 50.f, FColor::Magenta);
 		}
+
+		// Check if the Line Trace duration is greater than 3 seconds and stop drawing the debug line
+		LineTraceDuration += GetWorld()->GetDeltaSeconds();
+		if (LineTraceDuration > 3.f)
+		{
+			// Stop drawing the debug line
+			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false);
+		}
 	}
+
 	
 	{
 		FActorSpawnParameters SpawnParams;

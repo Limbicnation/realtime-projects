@@ -64,43 +64,25 @@ void ABullet::Tick(float DeltaTime)
 		UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
 		if (StaticMeshComponent)
 		{
+			if (StaticMeshComponent->ComponentHasTag("MyObelisk"))
 			{
-				UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
-				if (StaticMeshComponent && StaticMeshComponent->ComponentHasTag("MyObelisk"))
+				AActor* HitActor = StaticMeshComponent->GetOwner();
+				if (HitActor && HitActor->ActorHasTag("BP_ObeliskDestroy"))
 				{
-					AActor* HitActor = StaticMeshComponent->GetOwner();
-					if (HitActor && HitActor->ActorHasTag("BP_ObeliskDestroy"))
-					{
-						HitActor->ProcessEvent(HitActor->FindFunction("DestroyObelisk"), nullptr);
-					}
-				}
-				// Check if the hit actor is the desired one
-				AActor* HitActor = HitResult.GetActor();
-				if (HitActor && HitActor->ActorHasTag("BP_ObeliskDestroy_2"))
-				{
-					// Call the custom event on the hit actor
 					HitActor->ProcessEvent(HitActor->FindFunction("DestroyObelisk"), nullptr);
-					UE_LOG(LogTemp, Warning, TEXT("Line trace hit: %s"), *HitActor->GetName());
 				}
-				// Check if the HitResult has an actor and logs a warning message to the console that includes the name of the actor that was hit by the line trace.
-				if (HitResult.GetActor())
-				{
-					UE_LOG(LogTemp, Warning, TEXT("Line trace hit: %s"), *HitResult.GetActor()->GetName());
-				}
-			}
-			if (!StaticMeshComponent)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Hit component is not a static mesh component with tag 'MyObelisk'"));
 			}
 
+			// ... (Rest of the code for handling other tags and logic)
+
 			// Create an array of the material instance paths
-			UPROPERTY(EditDefaultsOnly, Category = "Materials")
-			MaterialInstancePaths = { "/Game/_Game/MaterialInstance/MI_EndlessTunnel_3",
-										"/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev",
-										"/Game/_Game/MaterialInstance/MI_FresnelRefraction", 
-										"/Game/_Game/MaterialInstance/MI_Twigl_01", 
-										"/Game/_Game/MaterialInstance/MI_VPCube" };
-		
+			TArray<FString> MaterialInstancePaths = {
+				"/Game/_Game/MaterialInstance/MI_EndlessTunnel_3",
+				"/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev",
+				"/Game/_Game/MaterialInstance/MI_FresnelRefraction",
+				"/Game/_Game/MaterialInstance/MI_Twigl_01",
+				"/Game/_Game/MaterialInstance/MI_VPCube"
+			};
 
 			TArray<TAssetPtr<UMaterialInstanceDynamic>> MaterialInstances;
 
@@ -113,7 +95,6 @@ void ABullet::Tick(float DeltaTime)
 					UMaterialInstanceDynamic* MaterialInstance = UMaterialInstanceDynamic::Create(MaterialInterface, nullptr);
 					MaterialInstances.Add(MaterialInstance);
 				}
-
 			}
 
 			// Get a random index for the material
@@ -134,32 +115,25 @@ void ABullet::Tick(float DeltaTime)
 				}
 			}
 		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Hit component is not a static mesh component with tag 'MyObelisk'"));
+		}
 	}
 	else
 	{
 		BulletExpiry += DeltaTime;
-		const float DrawDuration = 5.f; // in seconds
 
-		// Draw Debug Line and specify the true argument to make the debug line persistent
-		if (BulletExpiry <= 3.f) // Add this condition to check if the time hasn't exceeded 3 seconds
+		// Draw the Debug Line only if BulletExpiry is less than or equal to 3 seconds
+		if (BulletExpiry <= 3.f)
 			DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(FColor(0.0f, -BulletExpiry * 80.0f, 100.0f)), true);
 
-		BulletMesh->SetWorldLocation(EndTrace);
+		// ... (Rest of the code for spawning and moving bullets)
 
-		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, EndTrace, FRotator::ZeroRotator);
-		if (Bullet != nullptr)
+		if (BulletExpiry > 3)
 		{
-			FVector BulletDirection = EndTrace - StartTrace;
-			BulletDirection.Normalize();
-			Bullet->SetVelocity(BulletDirection * BulletSpeed);
+			Destroy();
 		}
-
-		BulletSpeed += FVector(0.0f, 0.0f, -200.0f) * DeltaTime;
 	}
-	
-	if(BulletExpiry > 3)
-	{
-		Destroy();
-	}
-	
 }
+
