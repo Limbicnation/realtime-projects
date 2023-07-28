@@ -91,17 +91,18 @@ void AAvatar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AAvatar::shoot);
 
-	InputComponent->BindAction("Sprint", IE_Pressed, this, &AAvatar::BeginSprinting);
-	InputComponent->BindAction("Sprint", IE_Released, this, &AAvatar::EndSprinting);
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &AAvatar::BeginSprinting);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &AAvatar::EndSprinting);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-	InputComponent->BindAxis("MoveForward", this, &AAvatar::MoveForward);
-	InputComponent->BindAxis("MoveRight", this, &AAvatar::MoveRight);
-	InputComponent->BindAxis("LookUp", this, &AAvatar::LookUp);
-	InputComponent->BindAxis("Turn", this, &AAvatar::Turn);
+	PlayerInputComponent->BindAxis("MoveForward", this, &AAvatar::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AAvatar::MoveRight);
+	PlayerInputComponent->BindAxis("LookUp", this, &AAvatar::LookUp);
+	PlayerInputComponent->BindAxis("Turn", this, &AAvatar::Turn);
 }
+
 
 void AAvatar::MoveForward(float value)
 {
@@ -145,14 +146,14 @@ void AAvatar::TurnRate(float Rate)
 {
 	if (Rate != 0.f)
 	{   // calculate delta for this frame from the rate information
-		AddControllerYawInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame);
+		AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame);
 	}
 }
 
 void AAvatar::LookUpRate(float Rate)
 {
 	// calculate delta for this frame from the rate value
-	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame
+	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame
 }
 
 void AAvatar::BeginSprinting()
@@ -179,6 +180,8 @@ void AAvatar::shoot()
 	}
 	/** Spawns the Niagara emitter at the location of the barrel socket. */
 	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
+	float LineTraceDuration = 0.f; // Variable to keep track of the Line Trace duration
+
 	if (BarrelSocket)
 	{
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
@@ -205,10 +208,18 @@ void AAvatar::shoot()
 		if (FireHit.bBlockingHit)
 		{
 			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, DrawDuration);
-			// create a line from start to end point with the given color and duration
 			DrawDebugPoint(GetWorld(), FireHit.Location, 50.f, FColor::Magenta);
 		}
+
+		// Check if the Line Trace duration is greater than 3 seconds and stop drawing the debug line
+		LineTraceDuration += GetWorld()->GetDeltaSeconds();
+		if (LineTraceDuration > 3.f)
+		{
+			// Stop drawing the debug line
+			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false);
+		}
 	}
+
 	
 	{
 		FActorSpawnParameters SpawnParams;
