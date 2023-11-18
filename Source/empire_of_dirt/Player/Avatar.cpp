@@ -170,77 +170,62 @@ void AAvatar::EndSprinting()
 
 void AAvatar::shoot()
 {
-	UE_LOG(LogTemp, Warning, TEXT("shoot"))
-	
-	// handle SFX for shooting
+	UE_LOG(LogTemp, Warning, TEXT("shoot"));
 
+	// Handle SFX for shooting
 	if (ShootSound)
 	{
-		UGameplayStatics::PlaySound2D(this, ShootSound);
+		UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
 	}
-	/** Spawns the Niagara emitter at the location of the barrel socket. */
+
+	// Get the Socket Transform from the mesh
 	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
-	float LineTraceDuration = 0.f; // Variable to keep track of the Line Trace duration
-
-	if (BarrelSocket)
+	if (!BarrelSocket)
 	{
-		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-
-		if (MuzzleFlash)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.Rotator());
-		}
-
-		/** Perform our Line trace here */
-
-		FHitResult FireHit;
-		const FVector Start{ SocketTransform.GetLocation() };
-		const FQuat Rotation{ SocketTransform.GetRotation() };
-		FVector RotationAxis{ Rotation.GetAxisX() };
-		RotationAxis.X = 90.0f;
-
-		const FColor LineColor(255, 0, 0); // red color
-		const float DrawDuration = 5.f; // in seconds
-
-		const FVector End{ Start + RotationAxis * 50'000.0f };
-
-		GetWorld()->LineTraceSingleByChannel(FireHit, Start, End, ECollisionChannel::ECC_Visibility);
-		if (FireHit.bBlockingHit)
-		{
-			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, DrawDuration);
-			DrawDebugPoint(GetWorld(), FireHit.Location, 50.f, FColor::Magenta);
-		}
-
-		// Check if the Line Trace duration is greater than 3 seconds and stop drawing the debug line
-		LineTraceDuration += GetWorld()->GetDeltaSeconds();
-		if (LineTraceDuration > 3.f)
-		{
-			// Stop drawing the debug line
-			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false);
-		}
+		UE_LOG(LogTemp, Warning, TEXT("BarrelSocket not found."));
+		return;
 	}
 
-	
+	const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+
+	// Spawn the Muzzle Flash
+	if (MuzzleFlash)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.GetRotation().Rotator());
+	}
+
+	// Perform Line Trace (if needed)
+	// ...
+
+	// Spawn the bullet
+	if (BulletClass)
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		SpawnParams.bNoFail = true;
 		SpawnParams.Owner = this;
-		SpawnParams.Instigator = this;
+		SpawnParams.Instigator = GetInstigator();
 
-		FTransform BulletSpawnTransform;
-		BulletSpawnTransform.SetLocation(GetActorForwardVector() * 500.f + GetActorLocation() + 100.f);
-		BulletSpawnTransform.SetRotation(GetActorRotation().Quaternion());
-		BulletSpawnTransform.SetScale3D(FVector(1.f));
+		// Use the Socket Transform for the spawn location and direction
+		FVector SpawnLocation = SocketTransform.GetLocation();
+		FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
 
-		GetWorld()->SpawnActor<ABullet>(BulletClass, BulletSpawnTransform, SpawnParams);
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
+		if (Bullet)
+		{
+			// Set additional properties on Bullet if needed
+		}
 	}
-	/** Plays the specified Montage Anim Instance */
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BulletClass is not set."));
+	}
+
+	// Handle Animations
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && FireMontage) 
+	if (AnimInstance && FireMontage)
 	{
 		AnimInstance->Montage_Play(FireMontage);
 		AnimInstance->Montage_JumpToSection(FName("FireWeapon"));
 	}
-
 }
+

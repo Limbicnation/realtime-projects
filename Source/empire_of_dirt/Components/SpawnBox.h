@@ -20,13 +20,11 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-
 	// Called when the actor stops playing
-	void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:	
-
-	// will spawn an actor of the specified class
+	// Will spawn an actor of the specified class
 	UFUNCTION(BlueprintCallable)
 	bool SpawnActor();
 
@@ -38,20 +36,28 @@ private:
 	UFUNCTION()
 	void SpawnActorScheduled();
 
-	// Will schedule an actor spawn 
-void ScheduleActorSpawn();
+	// Will schedule an actor spawn
+	void ScheduleActorSpawn();
+
+	// Destroy the spawned actor after a certain delay
+	void DestroySpawnedActor();
 
 public:
-		// Actor class to spawn
+	// Actor class to spawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AActor> ActorClassToBeSpawned;
 
 	// Average time between spawns (without random)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float AvgSpawnTime = 5.f;
+
 	// Random +/- offset of the spawn time
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RandomSpawnTimeOffset = 1.f;
+
+	// Delay before destroying the spawned actor (in seconds)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DestroyDelay = 10.0f; // Added variable for destroy delay
 
 private:
 	// Box in which we spawn the random Actors
@@ -64,8 +70,9 @@ private:
 	// Helper for timing
 	FTimerHandle SpawnTimerHandle;
 
-	// Random scale for static Mesh Component
-	FVector RandomScale;
+	// Pointer to the spawned actor
+	AActor* SpawnedActor = nullptr;
 
-
+	// Timer handle for destroying the spawned actor
+	FTimerHandle DestroyTimerHandle; // Added timer handle for destruction
 };

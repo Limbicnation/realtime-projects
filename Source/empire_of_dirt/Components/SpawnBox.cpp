@@ -1,18 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Components/SpawnBox.h"
 
 // Sets default values
 ASpawnBox::ASpawnBox()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
 	// Setup members
 	SpawnBox = CreateDefaultSubobject<UBoxComponent>(TEXT("SpawnBox"));
 	RootComponent = SpawnBox;
-
 }
 
 // Called when the game starts or when spawned
@@ -20,7 +18,7 @@ void ASpawnBox::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// schedule first spawn
+	// Schedule first spawn
 	if (ShouldSpawn)
 	{
 		ScheduleActorSpawn();
@@ -31,17 +29,17 @@ void ASpawnBox::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 
-	// Remove all timers associated with this objects instance
+	// Remove all timers associated with this object's instance
 	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 }
 
 bool ASpawnBox::SpawnActor()
-{	
+{
 	// Enable spawning
-	bool SpawnedActor = true;
+	bool bSpawnedActor = true;
 	if (ActorClassToBeSpawned)
 	{
-		// Calculate the extends of the box
+		// Calculate the extents of the box
 		FBoxSphereBounds BoxBounds = SpawnBox->CalcBounds(GetActorTransform());
 
 		// Compute random position within the box bounds
@@ -51,7 +49,7 @@ bool ASpawnBox::SpawnActor()
 		SpawnLocation.Z += -BoxBounds.BoxExtent.Z + 2 * BoxBounds.BoxExtent.Z * FMath::FRand();
 
 		// Spawn the actor
-		AActor* SpawnedActor = GetWorld()->SpawnActor(ActorClassToBeSpawned, &SpawnLocation);
+		SpawnedActor = GetWorld()->SpawnActor(ActorClassToBeSpawned, &SpawnLocation);
 
 		// Get the child static mesh component of the spawned actor
 		UStaticMeshComponent* ChildStaticMesh = Cast<UStaticMeshComponent>(SpawnedActor->GetComponentByClass(UStaticMeshComponent::StaticClass()));
@@ -70,16 +68,23 @@ bool ASpawnBox::SpawnActor()
 				FVector Force = FVector(ForceMagnitude, 0.0f, 0.0f);
 				ChildStaticMesh->AddForce(Force, NAME_None, true);
 			}
-		}
 
+			// Schedule destruction after the specified delay
+			GetWorldTimerManager().SetTimer(DestroyTimerHandle, this, &ASpawnBox::DestroySpawnedActor, DestroyDelay, false);
+		}
+		else
+		{
+			// Handle the case where the ChildStaticMesh is nullptr (e.g., the spawned actor doesn't have a Static Mesh Component)
+			bSpawnedActor = false;
+		}
 	}
 
-	return SpawnedActor;
+	return bSpawnedActor;
 }
 
 void ASpawnBox::EnableActorSpawning(bool Enable)
 {
-	// Update internal 
+	// Update internal flag
 	ShouldSpawn = Enable;
 
 	// Check if timer action is done
@@ -91,7 +96,6 @@ void ASpawnBox::EnableActorSpawning(bool Enable)
 	{
 		GetWorld()->GetTimerManager().ClearTimer(SpawnTimerHandle);
 	}
-
 }
 
 void ASpawnBox::ScheduleActorSpawn()
@@ -115,7 +119,16 @@ void ASpawnBox::SpawnActorScheduled()
 	}
 	else
 	{
-		// TODO... log error
+		// TODO: Log error
 	}
 }
 
+void ASpawnBox::DestroySpawnedActor()
+{
+	// Destroy the spawned actor if it exists
+	if (SpawnedActor)
+	{
+		SpawnedActor->Destroy();
+		SpawnedActor = nullptr; // Reset the pointer to nullptr
+	}
+}
