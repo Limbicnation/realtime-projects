@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Bullet.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
@@ -23,21 +22,24 @@ ABullet::ABullet()
 	BulletMesh = CreateDefaultSubobject<UStaticMeshComponent>("BulletMesh");
 	SetRootComponent(BulletMesh);
 
-	// initialize the Scene Component for Spawning the bullet class
+	// Initialize the Scene Component for Spawning the bullet class
 	RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComp"));
-	
 	RootComponent = RootComp;
-	
+
 	BulletMovement = CreateDefaultSubobject<UProjectileMovementComponent>("BulletMovement");
-	BulletMovement->InitialSpeed = 5000.0f;
-	BulletMovement->MaxSpeed = 500.0f;
+	BulletMovement->InitialSpeed = 0.0f; // Set initial speed to 0
+	BulletMovement->MaxSpeed = 5000.0f;   // Adjust the max speed as needed
+	BulletMovement->bInitialVelocityInLocalSpace = true; // Important for local space velocity
+
+	BulletExpiry = 0.0f; // Initialize BulletExpiry
+	DestroyDelay = 3.0f; // Set the desired destroy delay
+	BulletSpeed = FVector(5000.0f, 0.0f, 0.0f); // Initialize BulletSpeed
 }
 
 // Called when the game starts or when spawned
 void ABullet::BeginPlay()
 {
 	Super::BeginPlay();
-
 }
 
 // Called every frame
@@ -60,6 +62,8 @@ void ABullet::Tick(float DeltaTime)
 
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, StartTrace, EndTrace, ECC_Visibility, CollisionParams))
 	{
+		BulletMovement->InitialSpeed = BulletSpeed.Size(); // Update initial speed based on the desired velocity
+
 		// Check if a line trace hits any actor with the specified component tag
 		UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
 		if (StaticMeshComponent)
@@ -119,21 +123,24 @@ void ABullet::Tick(float DeltaTime)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Hit component is not a static mesh component with tag 'MyObelisk'"));
 		}
+
+		if (BulletExpiry > DestroyDelay)
+		{
+			Destroy();
+		}
 	}
 	else
 	{
 		BulletExpiry += DeltaTime;
 
-		// Draw the Debug Line only if BulletExpiry is less than or equal to 3 seconds
-		if (BulletExpiry <= 3.f)
-			DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(FColor(0.0f, -BulletExpiry * 80.0f, 100.0f)), true);
+		if (BulletExpiry <= DestroyDelay)
+		{
+			DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(0.0f, -BulletExpiry * 80.0f, 100.0f), true);
+		}
 
-		// ... (Rest of the code for spawning and moving bullets)
-
-		if (BulletExpiry > 3)
+		if (BulletExpiry > DestroyDelay)
 		{
 			Destroy();
 		}
 	}
 }
-
