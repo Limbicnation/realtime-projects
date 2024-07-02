@@ -1,61 +1,48 @@
 #pragma once
 
-#include "GameFramework/ProjectileMovementComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "GameFramework/ProjectileMovementComponent.h" // Include this header
 #include "Bullet.generated.h"
 
-/**
- * A projectile fired from a weapon.
- */
 UCLASS()
 class EMPIRE_OF_DIRT_API ABullet : public AActor
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
+    ABullet();
 
-	// we declare a BlueprintReadWrite variable in the parent Blueprint class:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Materials")
-	TArray<FString> MaterialInstancePaths;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    TArray<FString> MaterialInstancePaths;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
-	TSubclassOf<class ABullet> BulletClass;
+    UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+    TSubclassOf<class ABullet> BulletClass;
 
-	// Set the velocity of the bullet
-	UFUNCTION(BlueprintCallable, Category = "Bullet")
-	void SetVelocity(const FVector& NewVelocity);
-
-	/** Sets default values for this actor's properties. */
-	ABullet();
-
-	/** The bullet's static mesh component. */
-	UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
-	UStaticMeshComponent* BulletMesh;
-
-	/** The bullet's movement component. */
-	UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
-	UProjectileMovementComponent* BulletMovement;
-
-	/** The speed of the bullet. */
-	UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
-	FVector BulletSpeed = FVector(10000.0f);
+    UFUNCTION(BlueprintCallable, Category = "Bullet")
+    void SetVelocity(const FVector& NewVelocity);
 
 protected:
-	/** Called when the game starts or when spawned. */
-	virtual void BeginPlay() override;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet")
-	float DestroyDelay; // Add this line to declare DestroyDelay
+    virtual void BeginPlay() override;
 
 public:
-	/** Called every frame. */
-	virtual void Tick(float DeltaTime) override;
+    virtual void Tick(float DeltaTime) override;
 
 private:
-	/** The root component of the bullet. */
-	USceneComponent* RootComp;
+    UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
+    UStaticMeshComponent* BulletMesh;
 
-	/** The amount of time that has passed since the bullet was fired. */
-	float BulletExpiry = 0;
+    UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
+    UProjectileMovementComponent* BulletMovement; // No syntax error should occur here now
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
+    float DestroyDelay;
+
+    UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
+    FVector BulletSpeed = FVector(10000.0f);
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
+    USceneComponent* RootComp;
+
+    float BulletExpiry = 0;
 };
