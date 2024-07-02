@@ -1,231 +1,221 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Avatar.h"
-#include "Classes/Components/StaticMeshComponent.h"
-#include "GameFramework/Character.h"
+#include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
-#include "Bullet.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Animation/AnimMontage.h"
 #include "Sound/SoundCue.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "DrawDebugHelpers.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "Bullet.h"
 
-
-
-// Sets default values
-AAvatar::AAvatar() :
-	BaseTurnRate(45.f),
-	BaseLookUpRate(45.f)
+AAvatar::AAvatar()
 {
-	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = true;
 
-	CreateDefaultSubobject<UFloatingPawnMovement>("PawnMovement");
+    CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>("CubeMesh");
+    SetRootComponent(CubeMesh);
 
+    PlayerMovement = CreateDefaultSubobject<UFloatingPawnMovement>("PlayerMovement");
+    PlayerMovement->MaxSpeed = 3500;
 
-	/** Add Character movement */
+    ForwardArrowComponent = CreateDefaultSubobject<UArrowComponent>("ForwardArrowComponent");
+    ForwardArrowComponent->SetupAttachment(GetRootComponent());
 
-	PlayerMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatPawnMovement");
-	PlayerMovement->MaxSpeed = 3500;
+    // Initialize CameraBoom and FollowCamera
+    CameraBoom = CreateDefaultSubobject<USpringArmComponent>("CameraBoom");
+    CameraBoom->SetupAttachment(GetMesh()); // Attach to the skeletal mesh
+    CameraBoom->TargetArmLength = 300.f;
+    CameraBoom->bUsePawnControlRotation = true;
 
+    FollowCamera = CreateDefaultSubobject<UCameraComponent>("FollowCamera");
+    FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+    FollowCamera->bUsePawnControlRotation = false;
 
-	CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>("CubeMesh");
+    bUseControllerRotationPitch = false;
+    bUseControllerRotationYaw = false;
+    bUseControllerRotationRoll = false;
 
-	SprintingValue = 32.0f;
+    GetCharacterMovement()->bOrientRotationToMovement = true;
+    GetCharacterMovement()->RotationRate = FRotator(0.f, 250.f, 0.f);
+    GetCharacterMovement()->JumpZVelocity = 600.f;
+    GetCharacterMovement()->AirControl = 0.2f;
 
-	WalkingValue = 2.0f;
-
-	/** Setup camera boom (pulls in toward the character if there is a collision) */
-
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 300.f;
-	CameraBoom->bUsePawnControlRotation = true;
-
-	/** Setup follow camera*/
-
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera-> SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = true; // Camera does not rotate relative to arm
-
-	// Don't rotate, when the controller rotates. Camera rotates independent of Character rotation
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
-
-	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 250.f, 0.f); // at this rotation rate
-	GetCharacterMovement()->JumpZVelocity = 600.f; // These are values to tweak and to get them right for your game
-	GetCharacterMovement()->AirControl = 0.2f; // These are values to tweak and to get them right for your game
-
-
-	//Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
-	//CameraComponent->SetupAttachment(GetMesh());
-	//Camera->bUsePawnControlRotation = true;
-
+    BaseTurnRate = 45.f;
+    BaseLookUpRate = 45.f;
+    bIsSprinting = false;
+    SprintingValue = 32.0f;
+    WalkingValue = 2.0f;
 }
 
-// Called when the game starts or when spawned
 void AAvatar::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 }
 
-// Called every frame
 void AAvatar::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
+
+    // Align camera boom rotation with the arrow component
+    if (ForwardArrowComponent)
+    {
+        CameraBoom->SetWorldRotation(ForwardArrowComponent->GetComponentRotation());
+    }
 }
 
-// Called to bind functionality to input
 void AAvatar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AAvatar::shoot);
-
-	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &AAvatar::BeginSprinting);
-	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &AAvatar::EndSprinting);
-
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
-
-	PlayerInputComponent->BindAxis("MoveForward", this, &AAvatar::MoveForward);
-	PlayerInputComponent->BindAxis("MoveRight", this, &AAvatar::MoveRight);
-	PlayerInputComponent->BindAxis("LookUp", this, &AAvatar::LookUp);
-	PlayerInputComponent->BindAxis("Turn", this, &AAvatar::Turn);
+    PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AAvatar::Shoot);
+    PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &AAvatar::BeginSprinting);
+    PlayerInputComponent->BindAction("Sprint", IE_Released, this, &AAvatar::EndSprinting);
+    PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+    PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+    PlayerInputComponent->BindAxis("MoveForward", this, &AAvatar::MoveForward);
+    PlayerInputComponent->BindAxis("MoveRight", this, &AAvatar::MoveRight);
+    PlayerInputComponent->BindAxis("LookUp", this, &AAvatar::LookUp);
+    PlayerInputComponent->BindAxis("Turn", this, &AAvatar::Turn);
 }
 
-
-void AAvatar::MoveForward(float value)
+void AAvatar::MoveForward(float Value)
 {
-	if ((Controller != nullptr) && (value != 0.f))
-	{
-		if (bIsSprinting)
-			value *= SprintingValue;
-		/** Add movement in that direction */
-		AddMovementInput(GetActorForwardVector(), value / WalkingValue);
-	}
+    if (Controller != nullptr && Value != 0.f)
+    {
+        if (bIsSprinting)
+        {
+            Value *= SprintingValue;
+        }
+        AddMovementInput(GetActorForwardVector(), Value / WalkingValue);
+    }
 }
 
-void AAvatar::MoveRight(float value)
+void AAvatar::MoveRight(float Value)
 {
-	if (Controller && value)
-	{
-		if (bIsSprinting)
-			value *= WalkingValue;
-		/** Add movement in that direction */
-		AddMovementInput(GetActorRightVector(), value / WalkingValue);
-	}
+    if (Controller && Value != 0.f)
+    {
+        if (bIsSprinting)
+        {
+            Value *= WalkingValue;
+        }
+        AddMovementInput(GetActorRightVector(), Value / WalkingValue);
+    }
 }
 
-void AAvatar::LookUp(float value)
+void AAvatar::LookUp(float Value)
 {
-	if (value != 0.f)
-	{
-		AddControllerPitchInput(value * BaseLookUpRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame
-	}
+    AddControllerPitchInput(Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-void AAvatar::Turn(float value)
+void AAvatar::Turn(float Value)
 {
-	if (value != 0.f)
-	{
-		AddControllerYawInput(value * BaseTurnRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame);
-	}
-}
-
-void AAvatar::TurnRate(float Rate)
-{
-	if (Rate != 0.f)
-	{   // calculate delta for this frame from the rate information
-		AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame);
-	}
-}
-
-void AAvatar::LookUpRate(float Rate)
-{
-	// calculate delta for this frame from the rate value
-	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds()); // deg/sec * sec/frame
+    AddControllerYawInput(Value * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
 void AAvatar::BeginSprinting()
 {
-	bIsSprinting = true;
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are Sprinting!"));
+    bIsSprinting = true;
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are Sprinting!"));
 }
 
 void AAvatar::EndSprinting()
 {
-	bIsSprinting = false;
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are no longer sprinting!"));
+    bIsSprinting = false;
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are no longer sprinting!"));
 }
 
-void AAvatar::shoot()
+void AAvatar::Shoot()
 {
-	UE_LOG(LogTemp, Warning, TEXT("shoot"));
+    UE_LOG(LogTemp, Warning, TEXT("shoot"));
 
-	// Handle SFX for shooting
-	if (ShootSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
-	}
+    if (ShootSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
+    }
 
-	// Get the Socket Transform from the mesh
-	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
-	if (!BarrelSocket)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("BarrelSocket not found."));
-		return;
-	}
+    const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
+    if (!BarrelSocket)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("BarrelSocket not found."));
+        return;
+    }
 
-	const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
+    const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
 
-	// Spawn the Muzzle Flash
-	if (MuzzleFlash)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.GetRotation().Rotator());
-	}
+    if (MuzzleFlash)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.GetRotation().Rotator());
+    }
 
-	// Perform Line Trace (if needed)
-	// ...
+    FVector Start = SocketTransform.GetLocation();
+    FRotator Rotation = SocketTransform.GetRotation().Rotator();
+    FVector End = Start + (Rotation.Vector() * 5000.0f); // Trace 5000 units forward
 
-	// Spawn the bullet
-	if (BulletClass)
-	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		SpawnParams.Owner = this;
-		SpawnParams.Instigator = GetInstigator();
+    FHitResult HitResult;
+    FCollisionQueryParams CollisionParams;
+    CollisionParams.AddIgnoredActor(this);
 
-		// Use the Socket Transform for the spawn location and direction
-		FVector SpawnLocation = SocketTransform.GetLocation();
-		FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
+    bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
 
-		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
-		if (Bullet)
-		{
-			// Set additional properties on Bullet if needed
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("BulletClass is not set."));
-	}
+    if (bHit)
+    {
+        if (HitResult.GetActor())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Hit Actor: %s"), *HitResult.GetActor()->GetName());
+        }
 
-	// Handle Animations
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && FireMontage)
-	{
-		AnimInstance->Montage_Play(FireMontage);
-		AnimInstance->Montage_JumpToSection(FName("FireWeapon"));
-	}
+        DrawDebugLine(GetWorld(), Start, HitResult.Location, FColor::Red, false, 2.0f, 0, 1.0f);
+
+        if (BulletClass)
+        {
+            FActorSpawnParameters SpawnParams;
+            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+            SpawnParams.Owner = this;
+            SpawnParams.Instigator = GetInstigator();
+
+            FVector SpawnLocation = SocketTransform.GetLocation();
+            FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
+
+            ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
+            if (Bullet)
+            {
+                FVector BulletVelocity = (HitResult.Location - SpawnLocation).GetSafeNormal() * 3000.0f;
+                Bullet->SetVelocity(BulletVelocity);
+            }
+        }
+    }
+    else
+    {
+        DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 2.0f, 0, 1.0f);
+
+        if (BulletClass)
+        {
+            FActorSpawnParameters SpawnParams;
+            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+            SpawnParams.Owner = this;
+            SpawnParams.Instigator = GetInstigator();
+
+            FVector SpawnLocation = SocketTransform.GetLocation();
+            FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
+
+            ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
+            if (Bullet)
+            {
+                Bullet->SetVelocity(Rotation.Vector() * 3000.0f);
+            }
+        }
+    }
+
+    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+    if (AnimInstance && FireMontage)
+    {
+        AnimInstance->Montage_Play(FireMontage);
+        if (!AnimInstance->Montage_IsPlaying(FireMontage))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Failed to play fire montage"));
+        }
+    }
 }
-
