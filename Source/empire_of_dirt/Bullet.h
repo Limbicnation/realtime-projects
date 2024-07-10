@@ -13,8 +13,15 @@ class EMPIRE_OF_DIRT_API ABullet : public AActor
 public:
     ABullet();
 
+    // Expose key properties to Blueprint
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     TArray<FString> MaterialInstancePaths;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    float InitialSpeed = 2500.0f; // Default value of 2500
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    float MaxSpeed = 5000.0f; // Maximum speed of the bullet
 
     UFUNCTION(BlueprintCallable, Category = "Bullet")
     void SetVelocity(const FVector& NewVelocity);
@@ -33,16 +40,13 @@ private:
     UProjectileMovementComponent* BulletMovement;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
-    float DestroyDelay;
+    float DestroyDelay = 3.0f; // Time after which the bullet is destroyed
 
     UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
     FVector BulletSpeed;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
     USceneComponent* RootComp;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet", meta = (AllowPrivateAccess = true))
-    float InitialSpeed = 2500.0f; // Set default value to 2500
 
     UFUNCTION()
     void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
