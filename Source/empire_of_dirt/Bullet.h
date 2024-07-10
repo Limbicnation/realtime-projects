@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "GameFramework/ProjectileMovementComponent.h" // Include this header
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Bullet.generated.h"
 
 UCLASS()
@@ -13,11 +13,15 @@ class EMPIRE_OF_DIRT_API ABullet : public AActor
 public:
     ABullet();
 
+    // Expose key properties to Blueprint
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     TArray<FString> MaterialInstancePaths;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Projectile")
-    TSubclassOf<class ABullet> BulletClass;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    float InitialSpeed = 2500.0f; // Default value of 2500
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet")
+    float MaxSpeed = 5000.0f; // Maximum speed of the bullet
 
     UFUNCTION(BlueprintCallable, Category = "Bullet")
     void SetVelocity(const FVector& NewVelocity);
@@ -33,16 +37,19 @@ private:
     UStaticMeshComponent* BulletMesh;
 
     UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
-    UProjectileMovementComponent* BulletMovement; // No syntax error should occur here now
+    UProjectileMovementComponent* BulletMovement;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
-    float DestroyDelay;
+    float DestroyDelay = 3.0f; // Time after which the bullet is destroyed
 
     UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
-    FVector BulletSpeed = FVector(10000.0f);
+    FVector BulletSpeed;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
     USceneComponent* RootComp;
 
-    float BulletExpiry = 0;
+    UFUNCTION()
+    void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
+
+    float BulletExpiry;
 };

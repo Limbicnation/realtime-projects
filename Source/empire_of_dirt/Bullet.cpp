@@ -5,29 +5,36 @@
 #include "Misc/FileHelper.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
-void ABullet::SetVelocity(const FVector& NewVelocity)
-{
-    BulletMesh->SetPhysicsLinearVelocity(NewVelocity);
-}
-
 ABullet::ABullet()
 {
     PrimaryActorTick.bCanEverTick = true;
 
-    BulletMesh = CreateDefaultSubobject<UStaticMeshComponent>("BulletMesh");
-    SetRootComponent(BulletMesh);
+    RootComp = CreateDefaultSubobject<USceneComponent>("RootComp");
+    SetRootComponent(RootComp);
 
-    RootComp = CreateDefaultSubobject<USceneComponent>(TEXT("RootComp"));
-    RootComponent = RootComp;
+    BulletMesh = CreateDefaultSubobject<UStaticMeshComponent>("BulletMesh");
+    BulletMesh->SetupAttachment(RootComp);
 
     BulletMovement = CreateDefaultSubobject<UProjectileMovementComponent>("BulletMovement");
-    BulletMovement->InitialSpeed = 0.0f;
+    BulletMovement->InitialSpeed = 2500.0f;
     BulletMovement->MaxSpeed = 5000.0f;
     BulletMovement->bInitialVelocityInLocalSpace = true;
+
+    BulletMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
+    BulletMesh->OnComponentHit.AddDynamic(this, &ABullet::OnHit);
 
     BulletExpiry = 0.0f;
     DestroyDelay = 3.0f;
     BulletSpeed = FVector(5000.0f, 0.0f, 0.0f);
+
+    // Initialize the MaterialInstancePaths array with valid paths
+    MaterialInstancePaths = {
+        "/Game/_Game/MaterialInstance/MI_EndlessTunnel_3",
+        "/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev",
+        "/Game/_Game/MaterialInstance/MI_FresnelRefraction",
+        "/Game/_Game/MaterialInstance/MI_Twigl_01",
+        "/Game/_Game/MaterialInstance/MI_VPCube"
+    };
 }
 
 void ABullet::BeginPlay()
@@ -48,8 +55,6 @@ void ABullet::Tick(float DeltaTime)
     FCollisionQueryParams CollisionParams;
     CollisionParams.AddIgnoredActor(this);
 
-    FName ComponentTag = FName("MyObelisk");
-
     if (GetWorld()->LineTraceSingleByChannel(HitResult, StartTrace, EndTrace, ECC_Visibility, CollisionParams))
     {
         BulletMovement->InitialSpeed = BulletSpeed.Size();
@@ -66,51 +71,28 @@ void ABullet::Tick(float DeltaTime)
                 }
             }
 
-            TArray<FString> MaterialInstancePaths = {
-                "/Game/_Game/MaterialInstance/MI_EndlessTunnel_3",
-                "/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev",
-                "/Game/_Game/MaterialInstance/MI_FresnelRefraction",
-                "/Game/_Game/MaterialInstance/MI_Twigl_01",
-                "/Game/_Game/MaterialInstance/MI_VPCube"
-            };
-
-            TArray<TAssetPtr<UMaterialInstanceDynamic>> MaterialInstances;
-
-            for (const FString& MaterialInstancePath : MaterialInstancePaths)
+            if (MaterialInstancePaths.Num() > 0)
             {
-                const FString PrimaryAssetPath = FPackageName::ObjectPathToPackageName(MaterialInstancePath);
-                UMaterialInterface* MaterialInterface = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *PrimaryAssetPath, nullptr, LOAD_None, nullptr));
-                if (MaterialInterface)
+                int32 MaterialIndex = FMath::RandRange(0, MaterialInstancePaths.Num() - 1);
+                if (MaterialInstancePaths.IsValidIndex(MaterialIndex))
                 {
-                    UMaterialInstanceDynamic* MaterialInstance = UMaterialInstanceDynamic::Create(MaterialInterface, nullptr);
-                    MaterialInstances.Add(MaterialInstance);
-                }
-            }
+                    UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, *MaterialInstancePaths[MaterialIndex]);
 
-            int32 MaterialIndex = FMath::RandRange(0, MaterialInstancePaths.Num() - 1);
+                    USoundBase* SoundCue = LoadObject<USoundBase>(nullptr, TEXT("/Game/_Game/Assets/Sounds/Glitch/SC_Glitch"));
+                    UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundCue, HitResult.ImpactPoint);
 
-            UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, *MaterialInstancePaths[MaterialIndex]);
-
-            USoundBase* SoundCue = LoadObject<USoundBase>(nullptr, TEXT("/Game/_Game/Assets/Sounds/Glitch/SC_Glitch"));
-            UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundCue, HitResult.ImpactPoint);
-
-            if (MaterialInterface)
-            {
-                for (int32 i = 0; i < StaticMeshComponent->GetNumMaterials(); ++i)
-                {
-                    StaticMeshComponent->SetMaterial(i, MaterialInterface);
+                    if (MaterialInterface)
+                    {
+                        for (int32 i = 0; i < StaticMeshComponent->GetNumMaterials(); ++i)
+                        {
+                            StaticMeshComponent->SetMaterial(i, MaterialInterface);
+                        }
+                    }
                 }
             }
         }
-        else
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Hit component is not a static mesh component with tag 'MyObelisk'"));
-        }
 
-        if (BulletExpiry > DestroyDelay)
-        {
-            Destroy();
-        }
+        Destroy();
     }
     else
     {
@@ -125,5 +107,20 @@ void ABullet::Tick(float DeltaTime)
         {
             Destroy();
         }
+    }
+}
+
+void ABullet::SetVelocity(const FVector& NewVelocity)
+{
+    BulletMesh->SetPhysicsLinearVelocity(NewVelocity);
+}
+
+void ABullet::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
+{
+    if (OtherActor && OtherActor != this && OtherComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Bullet hit: %s"), *OtherActor->GetName());
+        // UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), /* Your particle system */, GetActorLocation()); // Commented out until you have a particle system
+        Destroy();
     }
 }
