@@ -150,62 +150,21 @@ void AAvatar::Shoot()
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.GetRotation().Rotator());
     }
 
-    FVector Start = SocketTransform.GetLocation();
-    FRotator Rotation = SocketTransform.GetRotation().Rotator();
-    FVector End = Start + (Rotation.Vector() * 5000.0f); // Trace 5000 units forward
+    FVector SpawnLocation = SocketTransform.GetLocation();
+    FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
 
-    FHitResult HitResult;
-    FCollisionQueryParams CollisionParams;
-    CollisionParams.AddIgnoredActor(this);
-
-    bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
-
-    if (bHit)
+    if (BulletClass)
     {
-        if (HitResult.GetActor())
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        SpawnParams.Owner = this;
+        SpawnParams.Instigator = GetInstigator();
+
+        ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
+        if (Bullet)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Hit Actor: %s"), *HitResult.GetActor()->GetName());
-        }
-
-        DrawDebugLine(GetWorld(), Start, HitResult.Location, FColor::Red, false, 2.0f, 0, 1.0f);
-
-        if (BulletClass)
-        {
-            FActorSpawnParameters SpawnParams;
-            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-            SpawnParams.Owner = this;
-            SpawnParams.Instigator = GetInstigator();
-
-            FVector SpawnLocation = SocketTransform.GetLocation();
-            FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
-
-            ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
-            if (Bullet)
-            {
-                FVector BulletVelocity = (HitResult.Location - SpawnLocation).GetSafeNormal() * 3000.0f;
-                Bullet->SetVelocity(BulletVelocity);
-            }
-        }
-    }
-    else
-    {
-        DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 2.0f, 0, 1.0f);
-
-        if (BulletClass)
-        {
-            FActorSpawnParameters SpawnParams;
-            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-            SpawnParams.Owner = this;
-            SpawnParams.Instigator = GetInstigator();
-
-            FVector SpawnLocation = SocketTransform.GetLocation();
-            FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
-
-            ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
-            if (Bullet)
-            {
-                Bullet->SetVelocity(Rotation.Vector() * 3000.0f);
-            }
+            FVector BulletVelocity = SpawnRotation.Vector() * 3000.0f; // Set the bullet velocity based on the rotation vector
+            Bullet->SetVelocity(BulletVelocity);
         }
     }
 
@@ -219,3 +178,7 @@ void AAvatar::Shoot()
         }
     }
 }
+
+
+
+

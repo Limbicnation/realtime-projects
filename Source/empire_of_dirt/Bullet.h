@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "GameFramework/ProjectileMovementComponent.h" // Include this header
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Bullet.generated.h"
 
 UCLASS()
@@ -15,9 +15,6 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     TArray<FString> MaterialInstancePaths;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Projectile")
-    TSubclassOf<class ABullet> BulletClass;
 
     UFUNCTION(BlueprintCallable, Category = "Bullet")
     void SetVelocity(const FVector& NewVelocity);
@@ -33,16 +30,22 @@ private:
     UStaticMeshComponent* BulletMesh;
 
     UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
-    UProjectileMovementComponent* BulletMovement; // No syntax error should occur here now
+    UProjectileMovementComponent* BulletMovement;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
     float DestroyDelay;
 
     UPROPERTY(EditAnywhere, Category = "Components", meta = (AllowPrivateAccess = true))
-    FVector BulletSpeed = FVector(10000.0f);
+    FVector BulletSpeed;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bullet", meta = (AllowPrivateAccess = true))
     USceneComponent* RootComp;
 
-    float BulletExpiry = 0;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bullet", meta = (AllowPrivateAccess = true))
+    float InitialSpeed = 2500.0f; // Set default value to 2500
+
+    UFUNCTION()
+    void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
+
+    float BulletExpiry;
 };
