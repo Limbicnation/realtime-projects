@@ -85,23 +85,35 @@ void AAvatar::MoveForward(float Value)
 {
     if (Controller != nullptr && Value != 0.f)
     {
+        // Get the forward vector from the camera
+        const FRotator Rotation = Controller->GetControlRotation();
+        const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+        // Get the forward vector based on the camera's rotation
+        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
         if (bIsSprinting)
         {
             Value *= SprintingValue;
         }
-        AddMovementInput(GetActorForwardVector(), Value / WalkingValue);
+        AddMovementInput(Direction, Value / WalkingValue);
     }
 }
 
 void AAvatar::MoveRight(float Value)
 {
-    if (Controller && Value != 0.f)
+    if (Controller != nullptr && Value != 0.f)
     {
+        // Get the right vector from the camera
+        const FRotator Rotation = Controller->GetControlRotation();
+        const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+        // Get the right vector based on the camera's rotation
+        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
         if (bIsSprinting)
         {
             Value *= WalkingValue;
         }
-        AddMovementInput(GetActorRightVector(), Value / WalkingValue);
+        AddMovementInput(Direction, Value / WalkingValue);
     }
 }
 
@@ -178,7 +190,3 @@ void AAvatar::Shoot()
         }
     }
 }
-
-
-
-
