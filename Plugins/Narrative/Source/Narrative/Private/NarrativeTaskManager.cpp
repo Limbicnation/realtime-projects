@@ -1,10 +1,11 @@
-// SurvivalGame Project - The Unreal C++ Survival Game Course - Copyright Reuben Ward 2020
+// Copyright Narrative Tools 2022. 
 
 
 #include "NarrativeTaskManager.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/IAssetRegistry.h"
+#include "AssetRegistry/AssetData.h"
 #include "NarrativeDataTask.h"
-#include "Launch/Resources/Version.h"
 
 UNarrativeTaskManager::UNarrativeTaskManager()
 {
@@ -30,11 +31,7 @@ void UNarrativeTaskManager::CacheNarrativeTasks()
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FAssetData> AssetData;
 
-	#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION > 0
 	AssetRegistryModule.Get().GetAssetsByClass(UNarrativeDataTask::StaticClass()->GetClassPathName(), AssetData);
-	#else
-	AssetRegistryModule.Get().GetAssetsByClass("NarrativeDataTask", AssetData);
-	#endif
 
 	//AssetRegistryModule.Get().GetAssetsByPath("/Script/Narrative/NarrativeTask", AssetData);
 	//Map will cache these so we can effciently access them - map means that any duplicate actions will just get overwritten which is fine

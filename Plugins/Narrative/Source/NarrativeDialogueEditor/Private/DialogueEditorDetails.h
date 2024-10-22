@@ -27,7 +27,7 @@ public:
 	FText GetSpeakerText() const;
 	TSharedRef<SWidget> MakeWidgetForOption(TSharedPtr<FText> InOption);
 
-	virtual void OnSelectionChanged(TSharedPtr<FText> NewSelection, ESelectInfo::Type SelectInfo);
+	void OnSelectionChanged(TSharedPtr<FText> NewSelection, ESelectInfo::Type SelectInfo);
 
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 

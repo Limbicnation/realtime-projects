@@ -41,10 +41,14 @@ class NARRATIVE_API UQuest : public UObject
 	GENERATED_BODY()
 	
 protected:
-
+	
+	/**A lot of friends - but i'd rather couple UQuest tightly to these classes than allow anything to 
+	let anything call any of the internal UQuest functions that really shouldn't ever be touched*/
 	friend class UNarrativeTask;
+	friend class UQuestBlueprintGeneratedClass;
 	friend class UQuestState;
 	friend class UQuestBranch;
+	friend class UNarrativeComponent;
 
 	UQuest();
 
@@ -60,25 +64,6 @@ protected:
 
 public:
 
-	UFUNCTION(BlueprintPure, Category = "Narrative")
-	class UNarrativeComponent* GetOwningNarrativeComponent() const;
-		
-	UFUNCTION(BlueprintPure, Category = "Narrative")
-	class APawn* GetPawnOwner() const;
-
-
-	//Initialize this quest from its blueprint generated class. Return true if successful. 
-	virtual bool Initialize(class UNarrativeComponent* InitializingComp, const FName& QuestStartID = NAME_None);
-	virtual void DuplicateAndInitializeFromQuest(UQuest* QuestTemplate);
-
-	virtual void BeginQuest(const FName& OptionalStartFromID = NAME_None);
-
-	UFUNCTION(BlueprintCallable, Category = "Quest")
-	virtual void TakeBranch(UQuestBranch* Branch);
-
-	UFUNCTION(BlueprintCallable, Category = "Quest")
-	virtual void EnterState(UQuestState* NewState);
-
 	FORCEINLINE UQuestState* GetCurrentState() const { return CurrentState; }
 
 	UFUNCTION(BlueprintPure, Category = "Quest")
@@ -87,17 +72,88 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Quest")
 	class UQuestBranch* GetBranch(FName ID) const;
 
+	UFUNCTION(BlueprintCallable, Category = "Quests")
+    FText GetQuestName() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Quests")
+	FText GetQuestDescription() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Quests")
+	void SetQuestName(const FText& NewName);
+
+	UFUNCTION(BlueprintCallable, Category = "Quests")
+	void SetQuestDescription(const FText& NewDescription);
+
+
+protected:
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName="On Quest Started"))
+		void BPOnQuestStarted(const UQuest* Quest);
+
+	UFUNCTION()
+		void FailQuest(FText QuestFailedMessage);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Failed"))
+		void BPOnQuestFailed(const UQuest* Quest, const FText& QuestFailedMessage);
+
+	/**Manually set the quest as succeeded. You'll need to provide some text for the UI as theres no node  the quest, you're manually succeeding it.*/
+	UFUNCTION()
+		void SucceedQuest(FText QuestSucceededMessage);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Succeeded"))
+		void BPOnQuestSucceeded(const UQuest* Quest, const FText& QuestSucceededMessage);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest New State"))
+		void BPOnQuestNewState(UQuest* Quest, const UQuestState* NewState);
+
+	UFUNCTION()
+		void OnQuestTaskProgressChanged(const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Objective Progress Made"))
+	void BPOnQuestTaskProgressChanged(const UQuest* Quest, const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress);
+
+	UFUNCTION()
+		void OnQuestTaskCompleted(const UNarrativeTask* Task, const class UQuestBranch* Branch);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Task Completed"))
+		void BPOnQuestTaskCompleted(const UQuest* Quest, const UNarrativeTask* Task, const class UQuestBranch* Step);
+
+	UFUNCTION()
+		void OnQuestBranchCompleted(const class UQuestBranch* Branch);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Branch Taken"))
+		void BPOnQuestBranchCompleted(const UQuest* Quest, const class UQuestBranch* Branch);
+
+	//Explicitly tell the quest to go to the given state
+	UFUNCTION(BlueprintCallable, Category = "Quest")
+	virtual void EnterState(UQuestState* NewState);
+
+	virtual void EnterState_Internal(UQuestState* NewState);
+	virtual void TakeBranch(UQuestBranch* Branch);
+
+	//Initialize this quest from its blueprint generated class. Return true if successful. 
+	virtual bool Initialize(class UNarrativeComponent* InitializingComp, const FName& QuestStartID = NAME_None);
+	virtual void Deinitialize();
+	virtual void DuplicateAndInitializeFromQuest(UQuest* QuestTemplate);
+
+
+	virtual void BeginQuest(const FName& OptionalStartFromID = NAME_None);
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest Details")
 	FText QuestName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest Details", meta = (MultiLine = true))
 	FText QuestDescription;
 
-	UFUNCTION(BlueprintCallable, Category = "Quests")
-    FText GetQuestName() const;
+	/**Child quests don't inherit quest graph nodes, however sometimes you'd like children to inherit some states, 
+	for example your parent quest could have a state in here called "RanOutOfTime", and that way any child quests
+	could inherit the "RanOutOfTime" state instead of having to manually have one added to every quest. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "Quests")
+	TArray<UQuestState*> InheritableStates;
 
-	UFUNCTION(BlueprintCallable, Category = "Quests")
-	FText GetQuestDescription() const;
+	/**Current quest progress*/
+	UPROPERTY()
+	EQuestCompletion QuestCompletion;
 
 	//The beginning state of this quest
 	UPROPERTY(BlueprintReadOnly, Category = "Quests")
@@ -111,17 +167,9 @@ public:
 	UPROPERTY()
 	TArray<UQuestBranch*> Branches;
 
-	//The branch that was taken to get to the current state
-	UPROPERTY(BlueprintReadOnly, Category = "Quests")
-	UQuestBranch* PreviousBranch;
-
-	/**Current quest progress*/
+	//Holds all the spawned quest actors
 	UPROPERTY()
-	EQuestCompletion QuestCompletion;
-
-	/**All input for this quest*/
-	UPROPERTY()
-	TArray<FString> QuestActivities;
+	TArray<class AActor*> QuestActors;
 
 	/**All the states we've reached so far. Useful for a quest journal, where we need to show the player what they have done so far*/
 	UPROPERTY(BlueprintReadOnly, Category = "Quests")
@@ -135,8 +183,6 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Quests")
 	class APlayerController* OwningController;
-
-protected:
 
 	/**Called when a quest objective has been completed.*/
 	UPROPERTY(BlueprintAssignable, Category = "Quests")
@@ -174,44 +220,32 @@ protected:
 	UPROPERTY(BlueprintAssignable, Category = "Quests")
 		FOnQuestRestarted QuestRestarted;
 
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName="On Quest Started"))
-		void BPOnQuestStarted(const UQuest* Quest);
-
-	UFUNCTION(BlueprintCallable, Category = "Quest")
-		void FailQuest(FText QuestFailedMessage);
-
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Failed"))
-		void BPOnQuestFailed(const UQuest* Quest, const FText& QuestFailedMessage);
-
-	/**Manually set the quest as succeeded. You'll need to provide some text for the UI as theres no node  the quest, you're manually succeeding it.*/
-	UFUNCTION(BlueprintCallable, Category = "Quest")
-		void SucceedQuest(FText QuestSucceededMessage);
-
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Succeeded"))
-		void BPOnQuestSucceeded(const UQuest* Quest, const FText& QuestSucceededMessage);
-
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest New State"))
-		void BPOnQuestNewState(UQuest* Quest, const UQuestState* NewState);
-
-	UFUNCTION()
-		void OnQuestTaskProgressChanged(const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress);
-
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Objective Progress Made"))
-	void BPOnQuestTaskProgressChanged(const UQuest* Quest, const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress);
-
-	UFUNCTION()
-		void OnQuestTaskCompleted(const UNarrativeTask* Task, const class UQuestBranch* Branch);
-
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Task Completed"))
-		void BPOnQuestTaskCompleted(const UQuest* Quest, const UNarrativeTask* Task, const class UQuestBranch* Step);
-
-	UFUNCTION()
-		void OnQuestBranchCompleted(const class UQuestBranch* Branch);
-
-	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Branch Taken"))
-		void BPOnQuestBranchCompleted(const UQuest* Quest, const class UQuestBranch* Branch);
-
 public:
+
+	/*
+	* Spawn a quest actor! This will ensure the actors lifetime is managed automatically by the quest for you - when the quest ends, 
+	* all of the spawned quest actors will be cleaned up from the level. 
+	*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Dialogue")
+	AActor* SpawnQuestActor(TSubclassOf<class AActor> ActorClass, const FTransform& ActorTransform);
+	virtual AActor* SpawnQuestActor_Implementation(TSubclassOf<class AActor> ActorClass, const FTransform& ActorTransform);
+
+	void AddState(class UQuestState* State);
+	void AddBranch(class UQuestBranch* Branch);
+
+	void RemoveState(class UQuestState* State);
+	void RemoveBranch(class UQuestBranch* Branch);
+
+	void SetQuestStartState(class UQuestState* State);
+
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	UQuestState* GetQuestStartState() const {return QuestStartState;};
+
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	TArray<UQuestState*> GetStates() const {return States;};
+
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	TArray<UQuestBranch*> GetBranches() const {return Branches;};
 
 	UFUNCTION(BlueprintPure, Category = "Quests")
 	TArray<UQuestNode*> GetNodes() const;
@@ -219,5 +253,18 @@ public:
 	//Grab the completion of the quest 
 	UFUNCTION(BlueprintPure, Category = "Quests")
 	FORCEINLINE EQuestCompletion GetQuestCompletion() const { return QuestCompletion; };
+
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	FORCEINLINE class APlayerController* GetOwningController() const {return OwningController;}
+
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	FORCEINLINE class APawn* GetOwningPawn() const {return OwningPawn;}
+
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	FORCEINLINE class UNarrativeComponent* GetOwningComp() const {return OwningComp;};
+
+	/**Return all players doing this quest if shared, or the owningcontroller if solo quest*/
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	TArray<class APlayerController*> GetGroupMembers() const; 
 
 };

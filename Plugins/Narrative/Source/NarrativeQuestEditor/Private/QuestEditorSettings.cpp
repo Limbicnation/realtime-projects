@@ -5,6 +5,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "QuestNodeUserWidget.h"
 #include "QuestSM.h" 
+#include "Quest.h"
 
 UQuestEditorSettings::UQuestEditorSettings()
 {
@@ -17,7 +18,7 @@ UQuestEditorSettings::UQuestEditorSettings()
 
 	DefaultQuestState = UQuestState::StaticClass();
 	DefaultQuestBranch = UQuestBranch::StaticClass();
-
+	DefaultQuestClass = UQuest::StaticClass();
 
 	auto QuestNodeUserWidgetFinder = ConstructorHelpers::FClassFinder<UQuestNodeUserWidget>(TEXT("WidgetBlueprint'/Narrative/NarrativeUI/Widgets/Editor/WBP_DefaultQuestNode.WBP_DefaultQuestNode_C'"));
 	if (QuestNodeUserWidgetFinder.Succeeded())

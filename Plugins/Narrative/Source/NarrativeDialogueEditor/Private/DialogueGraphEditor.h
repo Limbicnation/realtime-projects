@@ -10,7 +10,7 @@
 #include "GraphEditor.h"
 #include "DialogueBlueprint.h"
 #include "IDialogueEditor.h"
-#include "WorkFlowOrientedApp/WorkflowTabManager.h"
+
 
 //class FDialogueNodeTextImporter
 //{
@@ -88,6 +88,8 @@ double click jumps to parent node, we need custom double clicked functionality T
 	bool Dialogue_CanCreateComment() const;
 
 	bool Dialogue_GetBoundsForSelectedNodes(class FSlateRect& Rect, float Padding);
+
+	void OnWorldChange(UWorld* World, EMapChangeType MapChangeType);
 
 	// Delegates for custom Dialogue graph editor commands
 	void ShowDialogueDetails();

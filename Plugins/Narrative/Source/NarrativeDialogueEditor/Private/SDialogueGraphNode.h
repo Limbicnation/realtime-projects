@@ -12,6 +12,7 @@
 #include "DialogueGraphNode.h"
 #include "SGraphNode.h"
 #include "SGraphPin.h"
+#include <UObject/GCObject.h>
 
 class NARRATIVEDIALOGUEEDITOR_API SDialogueGraphNode : public SGraphNode
 {
@@ -29,6 +30,7 @@ public:
 	virtual void AddPin(const TSharedRef<SGraphPin>& PinToAdd) override;
 	virtual void MoveTo( const FVector2D& NewPosition, FNodeSet& NodeFilter, bool bMarkDirty /* = true */ );
 	//~ End SGraphNode Interface
+
 
 	/** handle mouse down on the node */
 	FReply OnMouseDown(const FGeometry& SenderGeometry, const FPointerEvent& MouseEvent);

@@ -1,10 +1,11 @@
-// SurvivalGame Project - The Unreal C++ Survival Game Course - Copyright Reuben Ward 2020
+// Copyright Narrative Tools 2022. 
 
 
 #include "NarrativeNodeBase.h"
 #include "NarrativeCondition.h"
 #include "NarrativeEvent.h"
 #include "NarrativeComponent.h"
+#include "NarrativePartyComponent.h"
 
 UNarrativeNodeBase::UNarrativeNodeBase()
 {
@@ -35,31 +36,40 @@ void UNarrativeNodeBase::ProcessEvents(APawn* Pawn, APlayerController* Controlle
 	if (!NarrativeComponent)
 	{
 		UE_LOG(LogNarrative, Warning, TEXT("Tried running events on node %s but Narrative Comp was null."), *GetNameSafe(this));
+		return;
 	}
 
 	for (auto& Event : Events)
 	{
 		if (Event && (Event->EventRuntime == Runtime || Event->EventRuntime == EEventRuntime::Both))
 		{
-			UNarrativeComponent* CompToUse = Event->bUseSharedComponent && NarrativeComponent->SharedNarrativeComp ? NarrativeComponent->SharedNarrativeComp : NarrativeComponent;
+			TArray<UNarrativeComponent*> CompsToExecute;
 
-			if (!CompToUse && Event->bUseSharedComponent)
+			if (UNarrativePartyComponent* PartyComp = Cast<UNarrativePartyComponent>(NarrativeComponent))
 			{
-				UE_LOG(LogNarrative, Warning, TEXT("Event %s on node %s uses bUseSharedComponent but SharedNarrativeComp was null. Falling back to local Narrative comp..."), *GetNameSafe(Event), *GetNameSafe(this));
-				CompToUse = NarrativeComponent;
-			}
-
-			if (CompToUse)
-			{
-				if (Event)
+				if (Event->PartyEventPolicy == EPartyEventPolicy::AllPartyMembers)
 				{
-					Event->ExecuteEvent(Pawn, Controller, CompToUse);
+					CompsToExecute.Append(PartyComp->GetPartyMembers());
+				}
+				else if (Event->PartyEventPolicy == EPartyEventPolicy::PartyLeader)
+				{
+					CompsToExecute.Add(PartyComp->GetPartyLeader());
+				}
+				else if (Event->PartyEventPolicy == EPartyEventPolicy::Party)
+				{
+					CompsToExecute.Add(PartyComp);
 				}
 			}
 			else
 			{
-				UE_LOG(LogNarrative, Warning, TEXT("Tried running event %s on node %s but Narrative Comp was null."), *GetNameSafe(Event), *GetNameSafe(this));
+				CompsToExecute.Add(NarrativeComponent);
 			}
+
+			for (auto& Comp : CompsToExecute)
+			{
+				Event->ExecuteEvent(Comp->GetOwningPawn(), Comp->GetOwningController(), Comp);
+			}
+
 		}
 	}
 }
@@ -70,33 +80,77 @@ bool UNarrativeNodeBase::AreConditionsMet(APawn* Pawn, APlayerController* Contro
 	if (!NarrativeComponent)
 	{
 		UE_LOG(LogNarrative, Warning, TEXT("Tried running conditions on node %s but Narrative Comp was null."), *GetNameSafe(this));
+		return false;
 	}
-
+	  
 	//Ensure all conditions are met
 	for (auto& Cond : Conditions)
 	{	
 		if (Cond)
 		{
-			
-			UNarrativeComponent* CompToCheck = Cond->bCheckSharedComponent && NarrativeComponent->SharedNarrativeComp ? NarrativeComponent->SharedNarrativeComp : NarrativeComponent;
-
-			if (!CompToCheck && Cond->bCheckSharedComponent)
+			//We're running a condition on a party! Figure out who we need to run the condition on
+			if (UNarrativePartyComponent* PartyComp = Cast<UNarrativePartyComponent>(NarrativeComponent))
 			{
-				UE_LOG(LogNarrative, Warning, TEXT("Condition %s on node %s uses bCheckSharedComponent but SharedNarrativeComp was null. Falling back to local Narrative comp..."), *GetNameSafe(Cond), *GetNameSafe(this));
-				CompToCheck = NarrativeComponent;
+				TArray<UNarrativeComponent*> ComponentsToCheck;
+
+				UE_LOG(LogNarrative, Warning, TEXT("Running on party..."));
+				//We need to check everyone in the party
+				if (Cond->PartyConditionPolicy == EPartyConditionPolicy::AllPlayersPass || Cond->PartyConditionPolicy == EPartyConditionPolicy::AnyPlayerPasses)
+				{
+					ComponentsToCheck.Append(PartyComp->GetPartyMembers());
+				}//We need to check the party leader
+				else if (Cond->PartyConditionPolicy == EPartyConditionPolicy::PartyLeaderPasses)
+				{
+					ComponentsToCheck.Add(PartyComp->GetPartyLeader());
+				}
+				else if (Cond->PartyConditionPolicy == EPartyConditionPolicy::PartyPasses)
+				{
+					ComponentsToCheck.Add(PartyComp);
+				}
+
+				bool bAnyonePassed = false;
+
+				//If any of our comps to check fail, return false 
+				for (auto& ComponentToCheck : ComponentsToCheck)
+				{	
+					const bool bConditionPassed = Cond && Cond->CheckCondition(ComponentToCheck->GetOwningPawn(), ComponentToCheck->GetOwningController(), ComponentToCheck) != Cond->bNot;
+					FString CondString = bConditionPassed ? "passed" : "failed";
+
+					if (bConditionPassed)
+					{
+						//We'll check the next condition since someone passed
+						if (Cond->PartyConditionPolicy == EPartyConditionPolicy::AnyPlayerPasses)
+						{
+							bAnyonePassed = true;
+							break;
+						}
+					}
+					else
+					{
+						if (Cond->PartyConditionPolicy != EPartyConditionPolicy::AnyPlayerPasses)
+						{
+							return false;
+						}
+					}
+
+					UE_LOG(LogNarrative, Warning, TEXT("Checking %s condition, and they: %s"), *GetNameSafe(ComponentToCheck), *CondString);
+				}
+
+				//If we didn't break, no players passed 
+				if (!bAnyonePassed && Cond->PartyConditionPolicy == EPartyConditionPolicy::AnyPlayerPasses)
+				{
+					return false;
+				}
+
 			}
-
-			if (CompToCheck)
+			else
 			{
-				if (Cond && Cond->CheckCondition(Pawn, Controller, CompToCheck) == Cond->bNot)
+				if (Cond && Cond->CheckCondition(Pawn, Controller, NarrativeComponent) == Cond->bNot)
 				{
 					return false;
 				}
 			}
-			else
-			{
-				UE_LOG(LogNarrative, Warning, TEXT("Tried running condition %s on node %s but Narrative Comp was null."), *GetNameSafe(Cond), *GetNameSafe(this));
-			}
+
 		}
 	}
 

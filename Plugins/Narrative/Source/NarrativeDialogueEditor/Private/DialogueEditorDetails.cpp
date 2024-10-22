@@ -81,7 +81,6 @@ FReply FDialogueEditorDetails::SetTransformsFromActorSelection()
 
 void FDialogueEditorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
-
 	LayoutBuilder = &DetailLayout;
 
 	TArray<TWeakObjectPtr<UObject>> EditedObjects;

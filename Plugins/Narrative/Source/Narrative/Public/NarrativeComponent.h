@@ -51,7 +51,7 @@ enum class EUpdateType : uint8
 };
 
 /**
-Right now UQuests aren't replicated the proper UE way (replicated flag on objects), because this is really complex and hasn't been very successful in testing.
+UQuests aren't replicated the proper UE way (replicated flag on objects), because this is really complex and hasn't been very successful in testing.
 It would also hog a lot more network performance, as quests often have hundreds of states, tasks, and branches,
 all of which would be sending network updates and replicating. 
 
@@ -173,7 +173,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnNarrativeTaskCompleted, const UN
 
 //Dialogue
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDialogueBegan, class UDialogue*, Dialogue);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDialogueFinished, class UDialogue*, Dialogue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueFinished, class UDialogue*, Dialogue, const bool, bStartingNewDialogue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FDialogueOptionSelected, class UDialogue*, Dialogue, class UDialogueNode_Player*, PlayerReply);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FDialogueRepliesAvailable, class UDialogue*, Dialogue, const TArray<UDialogueNode_Player*>&, PlayerReplies);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FNPCDialogueLineStarted, class UDialogue*, Dialogue, class UDialogueNode_NPC*, Node, const FDialogueLine&, DialogueLine, const FSpeakerInfo&, Speaker);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FNPCDialogueLineFinished, class UDialogue*, Dialogue, class UDialogueNode_NPC*, Node, const FDialogueLine&, DialogueLine, const FSpeakerInfo&, Speaker);
@@ -186,9 +187,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSaveComplete, FString, SaveGameNa
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBeginLoad, FString, SaveGameName);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLoadComplete, FString, SaveGameName);
 
+//Parties
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnJoinedParty, class UNarrativePartyComponent*, NewParty, class UNarrativePartyComponent*, LeftParty);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLeaveParty, class UNarrativePartyComponent*, LeftParty);
+
 /**
-Narrative Component acts as the connection to the Narrative system and allows you to start quests, complete Tasks, etc.
-In order to use Narrative you must add a Narrative Component to your Pawn/Controller/PlayerState etc. Like you would an AbilitySystemComponent
+* Add this component to your Player Controller. 
+* Narrative Component acts as the connection to the Narrative system and allows you to start quests, dialogues, complete Tasks, etc.
 */
 UCLASS( ClassGroup=(Narrative), DisplayName = "Narrative Component", meta=(BlueprintSpawnableComponent) )
 class NARRATIVE_API UNarrativeComponent : public UActorComponent
@@ -197,10 +202,14 @@ class NARRATIVE_API UNarrativeComponent : public UActorComponent
 
 public:	
 
+	friend class UQuest;
+	friend class UNarrativePartyComponent;
+
 	// Sets default values for this component's properties
 	UNarrativeComponent();
 
 	bool HasAuthority() const;
+	bool IsPartyComponent() const;
 
 protected:
 
@@ -267,6 +276,14 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Saving/Loading")
 	FOnLoadComplete OnLoadComplete;
 
+	/**Called when we've joined a party*/
+	UPROPERTY(BlueprintAssignable, Category = "Saving/Loading")
+	FOnJoinedParty OnJoinedParty;
+
+	/**Called when we've left a party*/
+	UPROPERTY(BlueprintAssignable, Category = "Saving/Loading")
+	FOnLeaveParty OnLeaveParty;
+
 	/**Called when a dialogue starts*/
 	UPROPERTY(BlueprintAssignable, Category = "Dialogues")
 	FOnDialogueBegan OnDialogueBegan;
@@ -274,6 +291,10 @@ public:
 	/**Called when a dialogue has been finished for any reason*/
 	UPROPERTY(BlueprintAssignable, Category = "Dialogues")
 	FOnDialogueFinished OnDialogueFinished;
+
+	/**Called when a dialogue option is selected*/
+	UPROPERTY(BlueprintAssignable, Category = "Dialogues")
+	FDialogueOptionSelected OnDialogueOptionSelected;
 
 	/**Called when the NPC(s) have finished talking and the players replies are available*/
 	UPROPERTY(BlueprintAssignable, Category = "Dialogues")
@@ -308,24 +329,29 @@ public:
 	class UDialogue* CurrentDialogue;
 
 	/*A map of every narrative task the player has ever completed, where the key is the amount of times the action has been completed
-	a TMap means we can very efficiently track large numbers of actions, such as shooting where the player may shoot a gun thousands of times */
+	a TMap means we can very efficiently track large numbers of actions, such as shooting where the player may shoot a gun thousands of times
+	
+	*/
 	UPROPERTY(EditAnywhere, Category = "Quests")
 	TMap<FString, int32> MasterTaskList;
-
-	/** Pointer to an optional shared narrative component. If set solo completed tasks get forwarded to this shared comp. */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Narrative")
-	class UNarrativeComponent* SharedNarrativeComp;
 
 	//We set this flag to true during loading so we don't broadcast any quest update delegates as we load quests back in
 	bool bIsLoading;
 
 protected:
 
+	/** The party we're in, if any. */
+	UPROPERTY(ReplicatedUsing=OnRep_PartyComponent, BlueprintReadOnly, Category = "Narrative")
+	class UNarrativePartyComponent* PartyComponent;
+
 	//We cache the OwningController, we won't cache pawn as this might change
 	UPROPERTY()
 	class APlayerController* OwnerPC;
 
 	void SendNarrativeUpdate(const FNarrativeUpdate& Update);
+
+	UFUNCTION()
+	void OnRep_PartyComponent(class UNarrativePartyComponent* OldPartyComponent);
 
 	UFUNCTION()
 	void OnRep_PendingUpdateList();
@@ -387,7 +413,7 @@ protected:
 	virtual void DialogueBegan(class UDialogue* Dialogue);
 
 	UFUNCTION()
-	virtual void DialogueFinished(class UDialogue* Dialogue);
+	virtual void DialogueFinished(class UDialogue* Dialogue, const bool bStartingNewDialogue);
 
 
 
@@ -398,6 +424,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Narrative")
 	virtual APlayerController* GetOwningController() const;
+
+	UFUNCTION(BlueprintPure, Category = "Narrative")
+	class UDialogue* GetCurrentDialogue() const;
 
 public:
 
@@ -473,6 +502,23 @@ public:
 	virtual bool ForgetQuest(TSubclassOf<class UQuest> QuestClass);
 
 	/**
+	* 
+	Check if calling BeginDialogue on a given dialogue asset would actually play any dialogue.
+	
+	THIS WILL ONLY WORK ON THE AUTHORITY. Server should use this function then replicate any needed stuff to clients, this will always 
+	return false on clients as they do not have the authority to begin dialogues. 
+
+	Essentially the same as BeginDialogue, just doesn't actually start the dialogue, just gives you
+	the bool return value to check if any dialogue would have started. 
+
+	Same as BeginDialogue, however doesn't actually begin the dialogue.*/
+	UFUNCTION(BlueprintPure, Category = "Dialogues")
+	virtual bool HasDialogueAvailable(TSubclassOf<class UDialogue> Dialogue, FName StartFromID = NAME_None);
+
+	/**Sets CurrentDialogue to the given dialogue class, cleaning up our existing dialogue if one is going. Won't actually begin playing the dialogue. */
+	virtual bool SetCurrentDialogue(TSubclassOf<class UDialogue> Dialogue, FName StartFromID = NAME_None);
+
+	/**
 	* Only callable on the server. Server grabs root dialogue node, validates its conditions, and sends it to the client via ClientRecieveDialogueOptions
 	*
 	*  NOTE: If using multi-NPC dialogues you'll need to ensure each speaker has their avatar correctly assigned. To do this, either set a SpeakerAvatarClass
@@ -485,28 +531,63 @@ public:
 
 	@return Whether the dialogue was successfully started 
 	*/
-	UFUNCTION(BlueprintCallable, Category = "Dialogues", BlueprintAuthorityOnly, meta=(DefaultToSelf="DefaultNPCAvatar", AdvancedDisplay = "2"))
-	virtual bool BeginDialogue(TSubclassOf<class UDialogue> Dialogue, class AActor* DefaultNPCAvatar, FName StartFromID = NAME_None);
+	UFUNCTION(BlueprintCallable, Category = "Dialogues", BlueprintAuthorityOnly, meta=(AdvancedDisplay = "1"))
+	virtual bool BeginDialogue(TSubclassOf<class UDialogue> Dialogue, FName StartFromID = NAME_None);
 
 	/**Used by the server to tell client to start dialogue. Also sends the initial chunk*/
 	UFUNCTION(Client, Reliable, Category = "Dialogues")
-	virtual void ClientBeginDialogue(TSubclassOf<class UDialogue> Dialogue, class AActor* NPC, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs);
+	virtual void ClientBeginDialogue(TSubclassOf<class UDialogue> Dialogue, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs);
+
+	/**[server] Begin a party dialogue for the player. */
+	virtual void BeginPartyDialogue(TSubclassOf<class UDialogue> Dialogue, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs);
+
+	/**Used by the server to inform client to start party dialogue. Also sends the initial chunk*/
+	UFUNCTION(Client, Reliable, Category = "Dialogues")
+	virtual void ClientBeginPartyDialogue(TSubclassOf<class UDialogue> Dialogue, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs);
 
 	/**Used by the server to tell client to end dialogue*/
 	UFUNCTION(Client, Reliable, Category = "Dialogues")
 	virtual void ClientExitDialogue();
 
+	/**Used by the server to tell client to end dialogue*/
+	UFUNCTION(Client, Reliable, Category = "Dialogues")
+	virtual void ClientExitPartyDialogue();
+
 	/**Used by the server to send valid dialogue chunks to the client*/
 	UFUNCTION(Client, Reliable, Category = "Dialogues")
 	virtual void ClientRecieveDialogueChunk(const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs);
 
-	/**Selects a dialogue option. Will update the dialogue and automatically start playing the next bit of dialogue*/
+	/**Called by the client when it tries selecting a dialogue option - the server ultimately decides if this goes through or not,
+	though the server validates replies before it sends them to you, so this should never fail */
 	UFUNCTION(BlueprintCallable, Category = "Dialogues")
-	virtual void SelectDialogueOption(class UDialogueNode_Player* Option);
+	virtual void TrySelectDialogueOption(class UDialogueNode_Player* Option);
+
+	/**[server] Selects a dialogue option. Will update the dialogue and automatically start playing the next bit of dialogue*/
+	virtual void SelectDialogueOption(class UDialogueNode_Player* Option, class APlayerState* Selector = nullptr);
+
+	/**Allows the server to inform a client to select a dialogue option. Used by party dialogues */
+	UFUNCTION(Client, Reliable, Category = "Dialogues")
+	virtual void ClientSelectDialogueOption(const FName& OptionID, class APlayerState* Selector=nullptr);
 
 	/**Tell the server we've selected a dialogue option*/
 	UFUNCTION(Server, Reliable, Category = "Dialogues")
 	virtual void ServerSelectDialogueOption(const FName& OptionID);
+
+
+
+	/**Attempt to skip the current dialogue line
+	Return true if we skipped the line, or if called on a client return true if we were able to ask server to skip the line (isn't guaranteed, server still needs to auth it)
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Dialogues")
+	virtual bool TrySkipCurrentDialogueLine();
+
+	/**[server only] Skip the current dialogue line */
+	virtual bool SkipCurrentDialogueLine();
+
+	/**Attempt to skip the current dialogue line */
+	UFUNCTION(Server, Reliable, Category = "Dialogues")
+	virtual void ServerTrySkipCurrentDialogueLine();
+
 
 	/**
 	* Exit the dialogue, but authoritatively check we're allowed to before doing so. 
@@ -520,7 +601,7 @@ public:
 	virtual void ExitDialogue();
 
 	UFUNCTION(Server, Reliable, Category = "Dialogues")
-	virtual void ServerExitDialogue();
+	virtual void ServerTryExitDialogue();
 
 	/**Return true if we're in a dialogue 
 
@@ -550,7 +631,7 @@ protected:
 	/**
 	Creates a new quest and initializes it from a given quest class. 
 	*/
-	virtual class UQuest* CreateQuest(TSubclassOf<class UQuest> QuestClass);
+	virtual class UQuest* MakeQuestInstance(TSubclassOf<class UQuest> QuestClass);
 
 	/**Called after CompleteNarrativeTask() has converted the Task into a raw string version of our Task */
 	virtual bool CompleteNarrativeTask_Internal(const FString& TaskString, const bool bFromReplication, const int32 Quantity);
@@ -558,13 +639,13 @@ protected:
 	/**
 	Create a dialogue object from the supplied dialogue class and params
 	*/
-	virtual class UDialogue* MakeDialogue(TSubclassOf<class UDialogue> DialogueClass, class AActor* NPC, FName StartFromID = NAME_None);
+	virtual class UDialogue* MakeDialogueInstance(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID = NAME_None);
 
 
 public:
 
 	/**
-	Check if the player has ever completed a specific action. For example you could check if the player has ever talked to a given NPC, taken a certain item, etc
+	Check if the player has ever completed a given data task. For example you could check if the player has ever talked to a given NPC, taken a certain item, etc
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Quests")
 	bool HasCompletedTask(const UNarrativeDataTask* Task, const FString& Name, const int32 Quantity = 1 );
@@ -584,11 +665,6 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Quests")
 	int32 GetNumberOfTimesTaskWasCompleted(const UNarrativeDataTask* Task, const FString& Name);
 
-	/**Check if the player has ever completed a specific task that updated a quest. For example if a quest had a task called "Talk to Chef", you could
-	use this to check if the player had ever completed that task during the quest.*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Quests")
-	bool HasCompletedTaskInQuest(TSubclassOf<class UQuest> QuestClass, const UNarrativeDataTask* Task, const FString& Name) const;
-
 	/**Returns a list of all failed quests, in chronological order.*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Quests")
 	TArray<UQuest*> GetFailedQuests() const;
@@ -607,20 +683,17 @@ public:
 
 	/**Given a Quest class return its active quest object if we've started this quest */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Quests")
-	class UQuest* GetQuest(TSubclassOf<class UQuest> QuestClass) const;
+	class UQuest* GetQuestInstance(TSubclassOf<class UQuest> QuestClass) const;
 
-	/**Set this players shared component. Any tasks the player completes will be forwarded to the shared component.
-	
-	This means if you complete a find like "FindItem_Sword", your entire teams shared component will also have that task completed. 
-	*/
-	UFUNCTION(BlueprintCallable, Category = "Shared Quests")
-	void SetSharedNarrativeComponent(UNarrativeComponent* NewSharedNarrativeComponent);
+	/**Return our parties component, if we have one*/
+	UFUNCTION(BlueprintPure, Category = "Parties")
+	FORCEINLINE class UNarrativePartyComponent* GetParty() const {return PartyComponent;};
 
 	/**
 	* 
 	* Save every quest we've done, and every legacy task the player has ever completed
 	* 
-	* BE CAREFUL: If you ship your game to people and they save their game, and you then modify a quest and ship that update to 
+	* BE CAREFUL: If you ship your game and players save their game, and you then modify a quest and ship that update to 
 	* people, it can break their save file, especially if they were at a state that you later remove or change the ID of. It is recommended to not touch
 	* quests as much as possible once they are shipped for this reason, especially do not remove/rename states the player can be at.
 	* 
@@ -648,5 +721,7 @@ protected:
 
 	//Internal load function that actually does the work.
 	virtual bool Load_Internal(const TArray<FNarrativeSavedQuest>& SavedQuests, const TMap<FString, int32>& NewMasterList);
+
+
 
 };

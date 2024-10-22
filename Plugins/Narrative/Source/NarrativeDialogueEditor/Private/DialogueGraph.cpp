@@ -47,12 +47,18 @@ void UDialogueGraph::NotifyGraphChanged(const FEdGraphEditAction& Action)
 					{
 						for (auto& NPCR : Dialogue->NPCReplies)
 						{
-							NPCR->NPCReplies.Remove(CastChecked<UDialogueNode_NPC>(NPCNode->DialogueNode));
+							if (NPCR)
+							{
+								NPCR->NPCReplies.Remove(CastChecked<UDialogueNode_NPC>(NPCNode->DialogueNode));
+							}
 						}
 
 						for (auto& PR : Dialogue->PlayerReplies)
 						{
-							PR->NPCReplies.Remove(CastChecked<UDialogueNode_NPC>(NPCNode->DialogueNode));
+							if (PR)
+							{
+								PR->NPCReplies.Remove(CastChecked<UDialogueNode_NPC>(NPCNode->DialogueNode));
+							}
 						}
 
 						Dialogue->NPCReplies.Remove(CastChecked<UDialogueNode_NPC>(NPCNode->DialogueNode));

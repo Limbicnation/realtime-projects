@@ -153,7 +153,7 @@ const FPinConnectionResponse UDialogueGraphSchema::CanCreateConnection(const UEd
 	}
 	else
 	{
-		return FPinConnectionResponse(CONNECT_RESPONSE_MAKE, LOCTEXT("InputsMatching", "Can't connect an input to an input, or an output to an output."));
+		return FPinConnectionResponse(CONNECT_RESPONSE_DISALLOW, LOCTEXT("InputsMatching", "Can't connect an input to an input, or an output to an output."));
 	}
 
 }

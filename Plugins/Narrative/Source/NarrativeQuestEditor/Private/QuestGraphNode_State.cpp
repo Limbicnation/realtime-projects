@@ -19,7 +19,7 @@ void UQuestGraphNode_State::DestroyNode()
 	check(QuestNode->GetOwningQuest());
 
 	//When the node is destroyed make sure it gets removed from the quest
-	QuestNode->GetOwningQuest()->States.Remove(State);
+	QuestNode->GetOwningQuest()->RemoveState(State);
 }
 
 FLinearColor UQuestGraphNode_State::GetGraphNodeColor() const

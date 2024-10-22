@@ -36,12 +36,15 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "Graph Style")
 	FLinearColor PersistentTasksNodeColor;
 
-	UPROPERTY(EditAnywhere, config, Category = "Graph Defaults", noclear, meta = (MetaClass = "QuestBranch"))
+	UPROPERTY(EditAnywhere, config, Category = "Quests", noclear, meta = (MetaClass = "/Script/Narrative.Quest"))
+	FSoftClassPath DefaultQuestClass;
+
+	UPROPERTY(EditAnywhere, config, Category = "Quests", noclear, meta = (MetaClass = "/Script/Narrative.QuestBranch"))
 	FSoftClassPath DefaultQuestBranch;
 
-	UPROPERTY(EditAnywhere, config, Category = "Graph Defaults", noclear, meta = (MetaClass = "QuestState"))
+	UPROPERTY(EditAnywhere, config, Category = "Quests", noclear, meta = (MetaClass = "/Script/Narrative.QuestState"))
 	FSoftClassPath DefaultQuestState;
 
-	UPROPERTY(EditAnywhere, config, Category = "Graph Defaults", noclear, meta = (MetaClass = "QuestNodeUserWidget"))
+	UPROPERTY(EditAnywhere, config, Category = "Graph Defaults", noclear, meta = (MetaClass = "/Script/NarrativeQuestEditor.QuestNodeUserWidget"))
 	TSoftClassPtr<class UQuestNodeUserWidget> DefaultQuestWidgetClass;
 };

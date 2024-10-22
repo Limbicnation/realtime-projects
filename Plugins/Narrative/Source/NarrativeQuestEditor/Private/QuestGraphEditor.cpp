@@ -25,7 +25,7 @@
 #include "QuestSM.h"
 #include "QuestBlueprint.h"
 #include "Quest.h"
-#include "Windows/WindowsPlatformApplicationMisc.h"
+#include "HAL/PlatformApplicationMisc.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Framework/Notifications/NotificationManager.h" 
 #include "QuestEditorCommands.h"
@@ -37,6 +37,9 @@
 #include "K2Node_CustomEvent.h"
 #include <AssetRegistry/AssetRegistryModule.h>
 #include "NarrativeQuestTaskBlueprint.h"
+#include <Engine/World.h>
+#include "QuestNodeUserWidget.h"
+#include "LevelEditor.h"
 
 #define LOCTEXT_NAMESPACE "QuestAssetEditor"
 
@@ -179,6 +182,9 @@ void FQuestGraphEditor::InitQuestEditor(const EToolkitMode::Type Mode, const TSh
 	}
 
 
+	FLevelEditorModule& LevelEditor = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+	LevelEditor.OnMapChanged().AddRaw(this, &FQuestGraphEditor::OnWorldChange);
+
 }
 
 FName FQuestGraphEditor::GetToolkitFName() const
@@ -297,7 +303,8 @@ void FQuestGraphEditor::PasteNodesHere(class UEdGraph* DestinationGraph, const F
 {
 	if (UQuestGraph* DGraph = Cast<UQuestGraph>(DestinationGraph))
 	{
-		Quest_PasteNodesHere(Location);
+		//Pasting quest nodes has caused more trouble than it has been worth - uncomment at your own risk! 
+		//Quest_PasteNodesHere(Location);
 	}
 	else
 	{
@@ -436,18 +443,18 @@ bool FQuestGraphEditor::Quest_CanCopyNodes() const
 	//Copying nodes is disabled for now
 	return false;
 
-	// If any of the nodes can be duplicated then we should allow copying
-	const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
-	for (FGraphPanelSelectionSet::TConstIterator SelectedIter(SelectedNodes); SelectedIter; ++SelectedIter)
-	{
-		UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
-		if (Node && Node->CanDuplicateNode())
-		{
-			return true;
-		}
-	}
+	//// If any of the nodes can be duplicated then we should allow copying
+	//const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
+	//for (FGraphPanelSelectionSet::TConstIterator SelectedIter(SelectedNodes); SelectedIter; ++SelectedIter)
+	//{
+	//	UEdGraphNode* Node = Cast<UEdGraphNode>(*SelectedIter);
+	//	if (Node && Node->CanDuplicateNode())
+	//	{
+	//		return true;
+	//	}
+	//}
 
-	return false;
+	//return false;
 }
 
 void FQuestGraphEditor::Quest_PasteNodes()
@@ -568,7 +575,7 @@ bool FQuestGraphEditor::Quest_CanDuplicateNodes() const
 	//Duplicating nodes is disabled for now
 	return false;
 
-	return CanCopyNodes();
+	//return CanCopyNodes();
 }
 
 void FQuestGraphEditor::Quest_CreateComment()
@@ -590,6 +597,24 @@ void FQuestGraphEditor::Quest_CreateComment()
 bool FQuestGraphEditor::Quest_CanCreateComment() const
 {
 	return true;
+}
+
+void FQuestGraphEditor::OnWorldChange(UWorld* World, EMapChangeType MapChangeType)
+{
+
+	//Dialogue graph nodes will be referencing the UWorld, and if it changes this will breakcc
+	if (World)
+	{
+		for (TObjectIterator<UUserWidget> Itr; Itr; ++Itr)
+		{
+			UUserWidget* Widget = *Itr;
+
+			if (Widget->IsA<UQuestNodeUserWidget>())
+			{
+				Widget->Rename(nullptr, GetTransientPackage());
+			}
+		}
+	}
 }
 
 void FQuestGraphEditor::ShowQuestDetails()

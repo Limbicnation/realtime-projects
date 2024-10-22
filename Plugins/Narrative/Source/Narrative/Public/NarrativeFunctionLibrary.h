@@ -33,14 +33,6 @@ public:
 	static class UNarrativeComponent* GetNarrativeComponentFromTarget(AActor* Target);
 
 	/**
-	* Find the narrative component from the supplied target object.
-	*
-	* @return The narrative component.
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Narrative", meta = (DefaultToSelf = "Target"))
-		static class UNarrativeComponent* GetSharedNarrativeComponentFromTarget(AActor* Target);
-
-	/**
 	* Calls CompleteNarrativeTask on the narrative component
 	*
 	* @return Whether the task updated a quest 

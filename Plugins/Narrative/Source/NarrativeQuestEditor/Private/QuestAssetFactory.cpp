@@ -9,6 +9,7 @@
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Quest.h"
 #include "BlueprintEditorSettings.h"
+#include "QuestEditorSettings.h"
 #include "QuestGraph.h"
 #include "QuestGraphSchema.h"
 #include "Kismet2/BlueprintEditorUtils.h"
@@ -48,27 +49,32 @@ UObject* UQuestAssetFactory::FactoryCreateNew(UClass* Class, UObject* InParent, 
 
 	UQuestBlueprint* QuestBP = nullptr;
 
-	//For some reason this is failing the nullcheck so set manually for now 
+	FSoftClassPath QuestClassPath = GetDefault<UQuestEditorSettings>()->DefaultQuestClass;
+	UClass* QuestClass = (QuestClassPath.IsValid() ? LoadObject<UClass>(NULL, *QuestClassPath.ToString()) : UQuest::StaticClass());
 
-	QuestBP = CastChecked<UQuestBlueprint>(FKismetEditorUtilities::CreateBlueprint(UQuest::StaticClass(), InParent, Name, BPTYPE_Normal, UQuestBlueprint::StaticClass(), UQuestBlueprintGeneratedClass::StaticClass(), CallingContext));
+	if (QuestClass == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Unable to load Quest Class '%s'. Falling back to generic UQuest."), *QuestClassPath.ToString());
+		QuestClass = UQuest::StaticClass();
+	}
 
-	//QuestBP->QuestTemplate = NewObject<UQuest>(QuestBP, UQuest::StaticClass(), NAME_None, RF_Transactional);
+	QuestBP = CastChecked<UQuestBlueprint>(FKismetEditorUtilities::CreateBlueprint(QuestClass, InParent, Name, BPTYPE_Normal, UQuestBlueprint::StaticClass(), UQuestBlueprintGeneratedClass::StaticClass(), CallingContext));
 
 	if (UQuest* QuestCDO = Cast<UQuest>(QuestBP->GeneratedClass->GetDefaultObject()))
 	{
 		FString NameString = QuestBP->GetFName().ToString();
 
-		//Add the Default Speaker to the dialogue 
+		//Add the Default Speaker to the Quest 
 		int32 UnderscoreIndex = -1;
 
 		if (NameString.FindChar(TCHAR('_'), UnderscoreIndex))
 		{
 			//remove D_SpeakerName prefix 
-			QuestCDO->QuestName = FText::FromString(NameString.RightChop(UnderscoreIndex + 1));
+			QuestCDO->SetQuestName(FText::FromString(NameString.RightChop(UnderscoreIndex + 1)));
 		}
 		else
 		{
-			QuestCDO->QuestName = FText::FromString(NameString);
+			QuestCDO->SetQuestName(FText::FromString(NameString));
 		}
 	}
 

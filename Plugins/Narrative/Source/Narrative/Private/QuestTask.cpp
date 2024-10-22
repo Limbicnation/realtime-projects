@@ -19,10 +19,15 @@ UNarrativeTask::UNarrativeTask()
 	bIsActive = false;
 }
 
-void UNarrativeTask::BeginTask()
+void UNarrativeTask::BeginTaskInit()
 {
-
 	bIsActive = true;
+
+	//If we come back to a state we've been at before in a quest, we need to do the task again so reset any previous progress 
+	if (OwningComp && !OwningComp->bIsLoading)
+	{
+		CurrentProgress = 0;
+	}
 
 	//Cache all the useful values tasks will want
 	if (UQuestBranch* OwningBranch = GetOwningBranch())
@@ -31,7 +36,7 @@ void UNarrativeTask::BeginTask()
 
 		if (OwningQuest)
 		{
-			OwningComp = OwningQuest->GetOwningNarrativeComponent();
+			OwningComp = OwningQuest->GetOwningComp();
 		
 			if (OwningComp)
 			{
@@ -40,8 +45,15 @@ void UNarrativeTask::BeginTask()
 			}
 		}
 	}
+}
 
-	if (OwningComp && OwningComp->HasAuthority())
+void UNarrativeTask::BeginTask()
+{
+	BeginTaskInit();	
+
+	K2_BeginTask();
+
+	if (OwningComp)
 	{
 		if (TickInterval > 0.f)
 		{
@@ -50,8 +62,6 @@ void UNarrativeTask::BeginTask()
 				World->GetTimerManager().SetTimer(TimerHandle_TickTask, this, &UNarrativeTask::TickTask, TickInterval, true);
 			}
 		}
-
-		K2_BeginTask();
 
 		//Fire the first tick off after BeginTask since begin task will usually init things that TickTask may need
 		TickTask();
@@ -65,42 +75,63 @@ void UNarrativeTask::TickTask_Implementation()
 
 void UNarrativeTask::EndTask()
 {
-	bIsActive = false;
-
-	if (UWorld* World = GetWorld())
+	if (bIsActive)
 	{
-		World->GetTimerManager().ClearTimer(TimerHandle_TickTask);
+		bIsActive = false;
+
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(TimerHandle_TickTask);
+		}
+
+		K2_EndTask();
 	}
 }
 
 void UNarrativeTask::SetProgress(const int32 NewProgress)
 {
-	//if (OwningComp && !OwningComp->HasAuthority())
-	//{
-		//UE_LOG(LogNarrative, Warning, TEXT("Client task tried setting progress on a task. Tasks are server authoritative, only the server needs to set progress."));
-		//return;
-	//}
+	SetProgressInternal(NewProgress);
+}
 
-	if (bIsActive && NewProgress >= 0)
+void UNarrativeTask::SetProgressInternal(const int32 NewProgress, const bool bFromReplication /*= false*/)
+{
+	const bool bHasAuth = bFromReplication || (OwningComp && OwningComp->HasAuthority());
+
+	if (OwningComp && bHasAuth)
 	{
-		if (NewProgress != CurrentProgress)
+		/*If we're loading OwningComp may be invalid as BeginTask hasnt cached it yet.
+		//If we're just loading a save, set the progress but don't bother updating any quest stuff except
+		//for on the current state (this is why we also check bIsActive)*/
+		if (OwningComp->bIsLoading && !bIsActive)
 		{
-			const int32 OldProgress = CurrentProgress;
-
 			CurrentProgress = FMath::Clamp(NewProgress, 0, RequiredQuantity);
+			return;
+		}
 
-			//Dont use IsComplete() because it would check if the task is optional which we don't want 
-			if (CurrentProgress >= RequiredQuantity)
+		if (bIsActive && NewProgress >= 0)
+		{
+			if (NewProgress != CurrentProgress)
 			{
-				if (UQuestBranch* Branch = GetOwningBranch())
+				const int32 OldProgress = CurrentProgress;
+
+				CurrentProgress = FMath::Clamp(NewProgress, 0, RequiredQuantity);
+
+				if (OwningQuest)
 				{
-					Branch->OnQuestTaskComplete(this);
+					OwningQuest->OnQuestTaskProgressChanged(this, GetOwningBranch(), OldProgress, CurrentProgress);
 				}
-			}
 
-			if (OwningQuest)
-			{
-				OwningQuest->OnQuestTaskProgressChanged(this, GetOwningBranch(), OldProgress, CurrentProgress);
+				//Dont use IsComplete() because it would check if the task is optional which we don't want 
+				if (CurrentProgress >= RequiredQuantity)
+				{
+					K2_OnTaskCompleted();
+
+					if (UQuestBranch* Branch = GetOwningBranch())
+					{
+						Branch->OnQuestTaskComplete(this);
+					}
+				}
+
 			}
 		}
 	}
@@ -108,7 +139,7 @@ void UNarrativeTask::SetProgress(const int32 NewProgress)
 
 void UNarrativeTask::AddProgress(const int32 ProgressToAdd /*= 1*/)
 {
-	SetProgress(CurrentProgress + ProgressToAdd);
+	SetProgressInternal(CurrentProgress + ProgressToAdd);
 }
 
 bool UNarrativeTask::IsComplete() const
@@ -118,7 +149,7 @@ bool UNarrativeTask::IsComplete() const
 
 void UNarrativeTask::CompleteTask()
 {
-	SetProgress(RequiredQuantity);
+	SetProgressInternal(RequiredQuantity);
 }
 
 UQuestBranch* UNarrativeTask::GetOwningBranch() const
@@ -129,6 +160,11 @@ UQuestBranch* UNarrativeTask::GetOwningBranch() const
 FText UNarrativeTask::GetTaskDescription_Implementation() const
 {
 	return LOCTEXT("DefaultNarrativeTaskDescription", "Task Description");
+}
+
+FText UNarrativeTask::GetTaskProgressText_Implementation() const
+{
+	return FText::Format(LOCTEXT("ProgressText", "({0}/{1})"), CurrentProgress, RequiredQuantity);
 }
 
 FText UNarrativeTask::GetTaskNodeDescription_Implementation() const

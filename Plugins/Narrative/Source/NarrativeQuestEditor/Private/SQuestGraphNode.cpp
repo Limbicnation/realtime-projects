@@ -13,7 +13,7 @@
 #include "ScopedTransaction.h"
 #include "QuestSM.h"
 #include "QuestEditorStyle.h"
-#include "Narrative/Public/Quest.h"
+#include "Quest.h"
 #include "QuestGraphNode_State.h"
 #include "NarrativeEvent.h"
 #include "QuestEditorSettings.h"

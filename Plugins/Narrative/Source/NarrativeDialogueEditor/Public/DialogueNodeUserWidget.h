@@ -31,9 +31,9 @@ protected:
 
 public:
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "Dialogue Node")
 	class UVerticalBox* LeftPinBox;
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "Dialogue Node")
 	class UVerticalBox* RightPinBox;
 };

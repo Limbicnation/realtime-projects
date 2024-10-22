@@ -42,11 +42,8 @@ void FDialogueEditorStyle::Initialize()
 	StyleSet->Set(FName(TEXT("ClassThumbnail.Dialogue")), new IMAGE_BRUSH("Dialogue", FVector2D(64, 64)));
 	StyleSet->Set(FName(TEXT("ClassIcon.Dialogue")), new IMAGE_BRUSH("Dialogue", FVector2D(16, 16)));
 
-	//Toolbar buttons
-	StyleSet->Set(FName(TEXT("DialogueEditor.Common.ShowDialogueDetails")), new IMAGE_BRUSH("DialogueEditor/Icons/ShowDialogueDetails_40x", FVector2D(40.f, 40.f)));
-	StyleSet->Set(FName(TEXT("DialogueEditor.Common.ShowDialogueDetails.Small")), new IMAGE_BRUSH("DialogueEditor/Icons/ShowDialogueDetails_40x", FVector2D(20.f, 20.f)));
-	StyleSet->Set(FName(TEXT("DialogueEditor.Common.ViewTutorial")), new IMAGE_BRUSH("DialogueEditor/Icons/ViewTutorial_40x", FVector2D(40.f, 40.f)));
-	StyleSet->Set(FName(TEXT("DialogueEditor.Common.ViewTutorial.Small")), new IMAGE_BRUSH("DialogueEditor/Icons/ViewTutorial_40x", FVector2D(20.f, 20.f)));
+	StyleSet->Set(FName(TEXT("ClassThumbnail.NarrativeDialogueSequence")), new IMAGE_BRUSH("NarrativeDialogueSequence", FVector2D(64, 64)));
+	StyleSet->Set(FName(TEXT("ClassIcon.NarrativeDialogueSequence")), new IMAGE_BRUSH("NarrativeDialogueSequence", FVector2D(16, 16)));
 
 	FSlateStyleRegistry::RegisterSlateStyle(*StyleSet.Get());
 };

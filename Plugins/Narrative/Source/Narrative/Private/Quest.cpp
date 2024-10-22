@@ -4,25 +4,17 @@
 #include "NarrativeDataTask.h"
 #include "QuestSM.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/PlayerController.h"
 #include "QuestBlueprintGeneratedClass.h"
 #include "NarrativeEvent.h"
 #include "NarrativeComponent.h"
 #include "NarrativeFunctionLibrary.h"
+#include "NarrativePartyComponent.h"
 
 UQuest::UQuest()
 {
 	QuestName = FText::FromString("My New Quest");
 	QuestDescription = FText::FromString("Enter a description for your quest here.");
-}
-
-class UNarrativeComponent* UQuest::GetOwningNarrativeComponent() const
-{
-	return OwningComp;
-}
-
-class APawn* UQuest::GetPawnOwner() const
-{
-	return OwningPawn;
 }
 
 UWorld* UQuest::GetWorld() const
@@ -32,9 +24,9 @@ UWorld* UQuest::GetWorld() const
 		return nullptr;
 	}
 
-	if (GetOwningNarrativeComponent())
+	if (OwningComp)
 	{
-		return GetOwningNarrativeComponent()->GetWorld();
+		return OwningComp->GetWorld();
 	}
 	
 	return nullptr;
@@ -80,6 +72,9 @@ bool UQuest::Initialize(class UNarrativeComponent* InitializingComp, const FName
 			//At this point, we should have a valid quest assigned to us. Check if we have a valid start state
 			if (QuestStartState)
 			{
+				//Add the inheritable states to the states list 
+				States.Append(InheritableStates);
+
 				OwningComp = InitializingComp;
 
 				OwningPawn = OwningComp->GetOwningPawn();
@@ -102,10 +97,37 @@ bool UQuest::Initialize(class UNarrativeComponent* InitializingComp, const FName
 	return false;
 }
 
+void UQuest::Deinitialize()
+{
+	//Deactivate every node in the quest, we don't want quest tasks updating any more 
+	for (auto& Branch : Branches)
+	{
+		if (Branch)
+		{
+			Branch->Deactivate();
+		}
+	}
+
+	for (auto& State : States)
+	{
+		if (State)
+		{
+			State->Deactivate();
+		}
+	}
+
+	for (auto& QuestActor : QuestActors)
+	{
+		QuestActor->Destroy();
+	}
+
+	QuestActors.Empty();
+}
+
 void UQuest::BeginQuest(const FName& QuestStartID /** = NAME_None*/)
 {
 	QuestCompletion = EQuestCompletion::QC_Started;
-	EnterState(QuestStartID.IsNone() ? QuestStartState : GetState(QuestStartID));
+	EnterState_Internal(QuestStartID.IsNone() ? QuestStartState : GetState(QuestStartID));
 
 	BPOnQuestStarted(this);
 
@@ -128,11 +150,25 @@ void UQuest::TakeBranch(UQuestBranch* Branch)
 	//Client can call this function in order to process delegates and things but server needs to be setting the state, not client 
 	if (OwningComp)
 	{
-		EnterState(Branch->DestinationState);
+		EnterState_Internal(Branch->DestinationState);
 	}
 }
 
 void UQuest::EnterState(UQuestState* NewState)
+{
+	if (NewState && States.Contains(NewState))
+	{
+		EnterState_Internal(NewState);
+
+		//If we're explicitly setting the state instead of moving to a new state by completing tasks, clients need to be told to go also 
+		if (OwningComp)
+		{
+			OwningComp->SendNarrativeUpdate(FNarrativeUpdate::QuestNewState(GetClass(), NewState->GetID()));
+		}
+	}
+}
+
+void UQuest::EnterState_Internal(UQuestState* NewState)
 {
 	if (NewState && OwningComp)
 	{
@@ -210,6 +246,16 @@ FText UQuest::GetQuestDescription() const
 	return QuestDescription;
 }
 
+void UQuest::SetQuestName(const FText& NewName)
+{
+	QuestName = NewName;
+}
+
+void UQuest::SetQuestDescription(const FText& NewDescription)
+{
+	QuestDescription = NewDescription;
+}
+
 void UQuest::FailQuest(FText QuestFailedMessage)
 {
 	QuestCompletion = EQuestCompletion::QC_Failed;
@@ -222,6 +268,8 @@ void UQuest::FailQuest(FText QuestFailedMessage)
 	{
 		OwningComp->OnQuestFailed.Broadcast(this, QuestFailedMessage);
 	}
+
+	Deinitialize();
 }
 
 void UQuest::SucceedQuest(FText QuestSucceededMessage)
@@ -236,6 +284,8 @@ void UQuest::SucceedQuest(FText QuestSucceededMessage)
 	{
 		OwningComp->OnQuestSucceeded.Broadcast(this, QuestSucceededMessage);
 	}
+
+	Deinitialize();
 }
 
 void UQuest::OnQuestTaskProgressChanged(const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress)
@@ -274,6 +324,51 @@ void UQuest::OnQuestBranchCompleted(const class UQuestBranch* Step)
 	}
 }
 
+AActor* UQuest::SpawnQuestActor_Implementation(TSubclassOf<class AActor> ActorClass, const FTransform& ActorTransform)
+{
+	AActor* Actor = nullptr;
+
+	if (GetWorld())
+	{
+		FActorSpawnParameters SpawnParams;
+
+		SpawnParams.bNoFail = true;
+		SpawnParams.Owner = GetOwningController();
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+		Actor = GetWorld()->SpawnActor<AActor>(ActorClass, ActorTransform);
+	}
+
+	QuestActors.Add(Actor);
+
+	return Actor;
+}
+
+void UQuest::AddState(class UQuestState* State)
+{
+	States.Add(State);
+}
+
+void UQuest::AddBranch(class UQuestBranch* Branch)
+{
+	Branches.Add(Branch);
+}
+
+void UQuest::RemoveState(class UQuestState* State)
+{
+	States.Remove(State);
+}
+
+void UQuest::RemoveBranch(class UQuestBranch* Branch)
+{
+	Branches.Remove(Branch);
+}
+
+void UQuest::SetQuestStartState(class UQuestState* State)
+{
+	QuestStartState = State;
+}
+
 TArray<UQuestNode*> UQuest::GetNodes() const
 {
 	TArray<UQuestNode*> Ret;
@@ -289,4 +384,26 @@ TArray<UQuestNode*> UQuest::GetNodes() const
 	}
 
 	return Ret;
+}
+
+TArray<class APlayerController*> UQuest::GetGroupMembers() const
+{
+	TArray<class APlayerController*> GroupMembers;
+
+	if (UNarrativePartyComponent* PartyComp = Cast<UNarrativePartyComponent>(OwningComp))
+	{
+		for (auto& GroupMemberComp : PartyComp->GetPartyMembers())
+		{
+			if (GroupMemberComp)
+			{
+				GroupMembers.Add(GroupMemberComp->GetOwningController());
+			}
+		}
+	}
+	else
+	{
+		GroupMembers.Add(OwningController);
+	}
+
+	return GroupMembers;
 }
