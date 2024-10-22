@@ -13,3 +13,8 @@ FString UNarrativeEvent::GetGraphDisplayText_Implementation()
 {
 	return GetName();
 }
+
+FText UNarrativeEvent::GetHintText_Implementation()
+{
+	return FText::GetEmpty();
+}

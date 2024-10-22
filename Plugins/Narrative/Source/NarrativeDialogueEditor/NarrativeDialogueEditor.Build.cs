@@ -31,6 +31,8 @@ public class NarrativeDialogueEditor : ModuleRules
 			new string[]
 			{
 				"Core",
+                "AnimGraphRuntime",
+                "AnimGraph",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

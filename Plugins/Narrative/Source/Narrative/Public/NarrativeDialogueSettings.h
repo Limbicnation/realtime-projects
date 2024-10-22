@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright Narrative Tools 2022. 
 
 #pragma once
 
@@ -27,7 +27,20 @@ public:
 	float MinDialogueTextDisplayTime;
 
 	//If a dialogue doesn't have audio supplied, how long should the text be displayed on the screen for? Lower letters per minute means player gets more time 
-	UPROPERTY(EditAnywhere, config, Category = "Dialogue Settings", meta = (ClampMin = 1))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, config, Category = "Dialogue Settings", meta = (ClampMin = 1))
 	float LettersPerSecondLineDuration;
 
+	//If there is only one player response available, should we autoselect it, regardless of whether bAutoSelect is checked?
+	UPROPERTY(EditAnywhere, config, Category = "Dialogue Settings")
+	bool bAutoSelectSingleResponse;
+
+	//Expiremental - won't autoarrange old dialogues, and you'll need to move your nodes into the correct position yourself. 
+	//Also makes dialogue nodes sort themselves from left to right instead of top to bottom
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, config, Category = "Graph Options")
+	bool bEnableVerticalWiring;
+
+	//Default speaker colors
+	UPROPERTY(EditAnywhere, config, Category = "Graph Style")
+	TArray<FLinearColor> SpeakerColors;
 };

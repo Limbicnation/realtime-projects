@@ -27,7 +27,7 @@ public:
 	UNarrativeTask();
 
 	/**The amount of times the task needs to be completed before the quest updates */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Task", meta = (ClampMin=1))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task", meta = (ClampMin=1))
 	int32 RequiredQuantity;
 
 	/** 
@@ -83,31 +83,47 @@ public:
 protected:
 
 	//BeginTask - lets the task bind to a delegate, or do any other init we need - even spawn some checkpoints or a bunch of enemies to take out!
+	void BeginTaskInit();
 	virtual void BeginTask();
 
 	//Called when the task is began - use this to check your task right away, bind any delegates, do anything you need 
 	UFUNCTION(BlueprintImplementableEvent, DisplayName = "Begin Task", Category = "Task")
 	void K2_BeginTask();
 
-	//Ticks the task at the desired tick interval - mainly to check the progress of the task and update it, however you can do anything else you need 
+	/**A function that repeatedly gets called in order to track progress. Generally try making tasks event based if you can, however
+	sometimes tasks need to tick. Note that this function doesn't get called on the client, only the server, as tasks are server auth 
+	so client doesn't really have any need to check the progress of a task */
 	UFUNCTION(BlueprintNativeEvent, DisplayName = "Tick Task", Category = "Task")
 	void TickTask();
 	virtual void TickTask_Implementation();
 
-	//Called when the task has ended, by default when it is completed 
 	virtual void EndTask();
 
-	//Sets the progress to whatever value you want it to be
-	UFUNCTION(BlueprintCallable, Category = "Task")
-	virtual void SetProgress(const int32 NewProgress);
+	/**Called when the task get deactivated (when all of the tasks on its branch are completed and the player has moved on in the quest)
+	
+	If you're looking for a function that is called when the task is completed use OnTaskCompleted*/
+	UFUNCTION(BlueprintImplementableEvent, DisplayName = "End Task", Category = "Task")
+	void K2_EndTask();
+
+	//[server only] Set the progress of this task, which may complete it when task reaches required progress. 
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Task")
+	void SetProgress(const int32 NewProgress);
+
+	//Sets the progress to whatever value you want it to be - interval non BP exposed version
+	virtual void SetProgressInternal(const int32 NewProgress, const bool bFromReplication = false);
 
 	//Allows you to add some progress to the quantity - negative values can also be used to subtract progress! 
-	UFUNCTION(BlueprintCallable, Category = "Task")
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Task")
 	virtual void AddProgress(const int32 ProgressToAdd = 1);
 
-	//completes the task, by setting the current progress to required amount
-	UFUNCTION(BlueprintCallable, Category = "Task")
+	//[server only] completes the task, by setting the current progress to required amount
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Task")
 	virtual void CompleteTask();
+
+	/**Called when the task is completed. Keep in mind this function can be called multiple times as narrative supports uncompleting tasks 
+	as well as completing*/
+	UFUNCTION(BlueprintImplementableEvent, DisplayName = "On Task Completed", Category = "Task")
+	void K2_OnTaskCompleted();
 
 	//The current progress this task has made
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Task")
@@ -139,6 +155,12 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Editor")
 	FText GetTaskDescription() const;
 	virtual FText GetTaskDescription_Implementation() const;
+
+	/**By default quest tasks display the task, followed by progress text ie: Find 10 Logs (6/10)
+	If you want to change the (6/10) to display something else, you can override this function. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Editor")
+	FText GetTaskProgressText() const;
+	virtual FText GetTaskProgressText_Implementation() const;
 
 	/** Optional special version of GetTaskDescription that is used for displaying info the editor nodes. 
 	If you don't implement this function the nodes will just use GetTaskDescription instead. */

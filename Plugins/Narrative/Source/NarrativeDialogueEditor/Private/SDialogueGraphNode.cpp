@@ -30,6 +30,8 @@ void SDialogueGraphNode::Construct(const FArguments& InArgs, UDialogueGraphNode*
 	GraphNode = InNode;
 
 	UpdateGraphNode();
+
+
 }
 
 void SDialogueGraphNode::CreatePinWidgets()
@@ -61,8 +63,9 @@ void SDialogueGraphNode::UpdateGraphNode()
 	UDialogueGraphNode* DialogueGraphNode = Cast<UDialogueGraphNode>(GraphNode);
 	UDialogueNode* DialogueNode = DialogueGraphNode ? DialogueGraphNode->DialogueNode : nullptr;
 
-	UDialogueNodeUserWidget* DialogueNodeWidgetInstance = nullptr;
-	UWorld* World = GEditor->GetEditorWorldContext().World();
+	//UDialogueNodeUserWidget* DialogueNodeWidgetInstance = nullptr;
+	UWorld* WidgetWorld = GEditor->GetEditorWorldContext().World();
+	class UDialogueNodeUserWidget* DialogueNodeWidgetInstance = nullptr;
 
 	// In a function where you want to get the reference to the UUserWidget asset
 	// Load the UUserWidget asset using SoftObjectPtr::LoadSynchronous
@@ -71,11 +74,13 @@ void SDialogueGraphNode::UpdateGraphNode()
 		UClass* WidgetClass = DialogueSettings->DefaultDialogueWidgetClass.LoadSynchronous();
 
 		// Spawn an instance of the UUserWidget class
-		DialogueNodeWidgetInstance = CreateWidget<UDialogueNodeUserWidget>(World, WidgetClass);
+		DialogueNodeWidgetInstance = CreateWidget<UDialogueNodeUserWidget>(WidgetWorld, WidgetClass);
 	}
 
 	if (DialogueNodeWidgetInstance && DialogueNode)
 	{
+		DialogueNodeWidgetInstance->SetFlags(RF_Transient);
+
 		if (UDialogueBlueprint* DialogueBP = Cast<UDialogueBlueprint>(GraphNode->GetGraph()->GetOuter()))
 		{
 			if (UDialogue* OwningDialogue = Cast<UDialogue>(DialogueBP->GeneratedClass->GetDefaultObject()))

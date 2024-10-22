@@ -18,7 +18,6 @@ public class Narrative : ModuleRules
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				"Narrative/DialogueShots"
 			}
 			);
 			
@@ -29,7 +28,10 @@ public class Narrative : ModuleRules
 				"Core",
 				"LevelSequence",
 				"MovieScene",
-                "CinematicCamera"
+                "CinematicCamera",
+                "AssetRegistry",
+                "AnimationCore",
+                "AnimGraphRuntime"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -43,7 +45,8 @@ public class Narrative : ModuleRules
 				"UMG",
 				"Slate",
 				"SlateCore",
-				"LevelSequence"
+				"LevelSequence",
+                "TraceLog",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

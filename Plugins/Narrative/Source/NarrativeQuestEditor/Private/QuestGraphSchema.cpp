@@ -24,7 +24,6 @@
 #include "QuestSM.h"
 #include "Quest.h"
 #include "QuestGraphEditor.h"
-#include "Launch/Resources/Version.h"
 
 #define LOCTEXT_NAMESPACE "QuestGraphSchema"
 

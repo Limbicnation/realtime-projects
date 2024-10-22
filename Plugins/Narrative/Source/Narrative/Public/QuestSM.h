@@ -18,11 +18,11 @@ class UQuestBlueprint;
 UENUM(BlueprintType)
 enum class EStateNodeType : uint8
 {
-	// Implicit fail - The state is not marked as accept
+	//This is a regular state and upon being reached the quest will be considered still in progress
 	Regular,
-	// Success - state is an accept state
+	// Success, the quest will be completed when this state is reached
 	Success,
-	// Explicit fail - state is marked as failure
+	// Fail, the quest will be failed when this state is reached 
 	Failure
 };
 
@@ -111,12 +111,8 @@ public:
 	//The title the node should have on the quest node title
 	virtual FText GetNodeTitle() const { return FText::FromString("Node"); };
 
-	//TODO can probably remove this. Last time we went through this branch or state. Used for PIE debugging
-	UPROPERTY()
-	FDateTime LastExecTime;
-
 	//Name of custom event to call when this state/branch is reached/taken
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Details", meta = (AdvancedDisplay=true))
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Details", meta = (AdvancedDisplay=true))
 	FName OnEnteredFuncName;
 
 	//The quest object that owns this node. 
@@ -126,7 +122,7 @@ public:
 
  DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStateReachedEvent);
 
-UCLASS(BlueprintType)
+UCLASS(BlueprintType, editinlinenew)
 class NARRATIVE_API UQuestState : public UQuestNode
 {
 	GENERATED_BODY()
@@ -145,7 +141,7 @@ public:
 	TArray<UQuestBranch*> Branches;
 
 	/**Determines how the state is interpreted by the quest that has reached it .*/
-	UPROPERTY(BlueprintReadOnly, Category = "Quest State")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Quest State")
 	EStateNodeType StateNodeType;
 
 };
@@ -175,20 +171,6 @@ public:
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "Task")
 	TArray<class UNarrativeTask*> QuestTasks;
-
-	/**The task the player needs to complete
-
-	In Narrative 3.0 these are still around in the editor for legacy reasons, but you'll need to convert your old quests to new ones.
-	Simply add CompleteNarrativeTask task to the new QuestTasks array, and fill the fields in. If you still have any issues try deleting and re-adding the node. */
-	UPROPERTY()
-	FQuestTask Task;
-
-	/**The task the player needs to complete
-
-	In Narrative 3.0 these are still around in the editor for legacy reasons, but you'll need to convert your old quests to new ones.
-	Simply add CompleteNarrativeTask task to the new QuestTasks array, and fill the fields in. If you still have any issues try deleting and re-adding the node. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Task", meta = (AdvancedDisplay=true))
-	TArray<FQuestTask> Tasks;
 
 	/**Should this branch be hidden from the player on the narrative demo UI (Great for quests with hidden options that we want to be part
 	of the quest logic, but we don't want the UI to show)*/

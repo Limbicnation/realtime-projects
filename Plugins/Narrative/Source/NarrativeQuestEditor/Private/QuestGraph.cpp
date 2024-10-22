@@ -51,7 +51,7 @@ void UQuestGraph::NotifyGraphChanged(const FEdGraphEditAction& Action)
 					//If a branch was deleted, remove it from any the states leading to it 
 					if (UQuestGraphNode_Action* ActionNode = Cast<UQuestGraphNode_Action>(QuestGraphNode))
 					{
-						for (auto& State : Quest->States)
+						for (auto& State : Quest->GetStates())
 						{
 							if (State)
 							{
@@ -61,7 +61,7 @@ void UQuestGraph::NotifyGraphChanged(const FEdGraphEditAction& Action)
 					} //If a state was deleted, remove it from any branches that lead to it
 					else if (UQuestGraphNode_State* StateNode = Cast<UQuestGraphNode_State>(QuestGraphNode))
 					{
-						for (auto& Branch : Quest->Branches)
+						for (auto& Branch : Quest->GetBranches())
 						{
 							if (Branch && Branch->DestinationState == StateNode->State)
 							{
@@ -92,7 +92,7 @@ void UQuestGraph::PinRewired(UQuestGraphNode* Node, UEdGraphPin* Pin)
 				{
 					if (UQuestGraphNode_Action* To = Cast<UQuestGraphNode_Action>(LinkedPin->GetOwningNode()))
 					{
-						for (auto& State : Quest->States)
+						for (auto& State : Quest->GetStates())
 						{
 							//Don't add the state for failure/success nodes, since failure and success nodes shouldn't have branches
 							if (State->StateNodeType == EStateNodeType::Regular)
@@ -148,12 +148,12 @@ void UQuestGraph::NodeAdded(UEdGraphNode* AddedNode)
 		//Initialize the quest start state if it hasn't already been created 
 		if (UQuestGraphNode_Root* RootGraphNode = Cast<UQuestGraphNode_Root>(AddedNode))
 		{
-			if (!Quest->QuestStartState)
+			if (!Quest->GetQuestStartState())
 			{
 				UQuestState* RootNode = MakeState(RootGraphNode, Quest);
 				RootNode->SetID(FName("QuestStart"));
 				RootNode->Description = FText::FromString("This is the start of my Quest.");
-				Quest->QuestStartState = RootNode;
+				Quest->SetQuestStartState(RootNode);
 				RootGraphNode->State = RootNode;
 			}
 			return;
@@ -181,7 +181,7 @@ void UQuestGraph::NodeAdded(UEdGraphNode* AddedNode)
 			//Node already has a branch set, was probably created from context menu 
 			if (ActionNode->Branch)
 			{
-				Quest->Branches.Add(ActionNode->Branch);
+				Quest->AddBranch(ActionNode->Branch);
 
 				//Use rename to fix a bug where old outer wasnt being set properly
 				ActionNode->Branch->Rename(nullptr, Quest);
@@ -225,7 +225,7 @@ UQuestState* UQuestGraph::MakeState(UQuestGraphNode_State* Node, UQuest* Quest)
 		State->StateNodeType = EStateNodeType::Success;
 	}
 
-	Quest->States.Add(State);
+	Quest->AddState(State);
 
 	return State;
 }
@@ -245,7 +245,7 @@ UQuestBranch* UQuestGraph::MakeBranch(UQuestGraphNode_Action* Node, UQuest* Ques
 
 	Node->QuestNode = Branch;
 
-	Quest->Branches.Add(Branch);
+	Quest->AddBranch(Branch);
 
 	return Branch;
 }

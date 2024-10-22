@@ -10,7 +10,7 @@
 #include "GraphEditor.h"
 #include "QuestBlueprint.h"
 #include "IQuestEditor.h"
-#include "WorkFlowOrientedApp/WorkflowTabManager.h"
+
 
 class FQuestGraphEditor : public IQuestEditor
 {
@@ -80,6 +80,10 @@ protected:
 	bool Quest_CanDuplicateNodes() const;
 	void Quest_CreateComment();
 	bool Quest_CanCreateComment() const;
+
+
+	void OnWorldChange(UWorld* World, EMapChangeType MapChangeType);
+
 
 public:
 

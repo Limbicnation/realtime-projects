@@ -17,7 +17,7 @@ void UQuestGraphNode_Action::DestroyNode()
 	Super::DestroyNode();
 
 	//When the node is destroyed make sure it gets removed from the quest
-	QuestNode->GetOwningQuest()->Branches.Remove(Branch);
+	QuestNode->GetOwningQuest()->RemoveBranch(Branch);
 
 }
 

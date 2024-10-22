@@ -1,14 +1,15 @@
 // Copyright Narrative Tools 2022. 
 
 #include "NarrativeComponent.h"
+#include "NarrativePartyComponent.h"
 #include "NarrativeSaveGame.h"
 #include "NarrativeFunctionLibrary.h"
-#include "DialogueSM.h"
 #include "Quest.h"
 #include "NarrativeDataTask.h"
 #include "QuestSM.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 #include "Engine/ActorChannel.h"
@@ -93,7 +94,7 @@ void UNarrativeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UNarrativeComponent, PendingUpdateList);
-	DOREPLIFETIME(UNarrativeComponent, SharedNarrativeComp);
+	DOREPLIFETIME(UNarrativeComponent, PartyComponent);
 
 	//Uncomment if you don't other players narrative components to replicate their updates to you 
 	//DOREPLIFETIME_CONDITION(UNarrativeComponent, PendingUpdateList, COND_OwnerOnly);
@@ -102,6 +103,11 @@ void UNarrativeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 bool UNarrativeComponent::HasAuthority() const
 {
 	return GetOwnerRole() >= ROLE_Authority;
+}
+
+bool UNarrativeComponent::IsPartyComponent() const
+{
+	return false;
 }
 
 bool UNarrativeComponent::IsQuestStartedOrFinished(TSubclassOf<class UQuest> QuestClass) const
@@ -201,7 +207,7 @@ class UQuest* UNarrativeComponent::BeginQuest(TSubclassOf<class UQuest> QuestCla
 		return nullptr;
 	}
 
-	if (UQuest* NewQuest = CreateQuest(QuestClass))
+	if (UQuest* NewQuest = MakeQuestInstance(QuestClass))
 	{
 		//If loading from save file don't send update since server will batch all quests and send them to client to begin 
 		if (!bIsLoading && HasAuthority() && GetNetMode() != NM_Standalone)
@@ -257,6 +263,8 @@ bool UNarrativeComponent::ForgetQuest(TSubclassOf<class UQuest> QuestClass)
 	{
 		if (QuestList.IsValidIndex(i) && QuestList[i]->GetClass()->IsChildOf(QuestClass))
 		{
+			QuestList[i]->Deinitialize();
+
 			OnQuestForgotten.Broadcast(QuestList[i]);
 			QuestList.RemoveAt(i);
 
@@ -271,85 +279,136 @@ bool UNarrativeComponent::ForgetQuest(TSubclassOf<class UQuest> QuestClass)
 	return false;
 }
 
-bool UNarrativeComponent::BeginDialogue(TSubclassOf<class UDialogue> DialogueClass, class AActor* DefaultAvatar, FName StartFromID)
+bool UNarrativeComponent::HasDialogueAvailable(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID /*= NAME_None*/)
+{
+	if (IsValid(DialogueClass))
+	{
+		return MakeDialogueInstance(DialogueClass, StartFromID) != nullptr;
+	}
+
+	return false;
+}
+
+bool UNarrativeComponent::SetCurrentDialogue(TSubclassOf<class UDialogue> Dialogue, FName StartFromID /*= NAME_None*/)
+{
+	if (Dialogue)
+	{
+		/**If we already have a dialogue running make sure its cleaned up before we begin a new one */
+		if (CurrentDialogue)
+		{
+			OnDialogueFinished.Broadcast(CurrentDialogue, true);
+
+			CurrentDialogue->Deinitialize();
+			CurrentDialogue = nullptr;
+		}
+
+		CurrentDialogue = MakeDialogueInstance(Dialogue, StartFromID);
+
+		return CurrentDialogue != nullptr;
+	}
+
+	return false;
+}
+
+bool UNarrativeComponent::BeginDialogue(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID)
 {
 	if (HasAuthority())
 	{
-		//Server constructs the dialogue, then replicates it back to the client so it can begin it
-		if (IsValid(DialogueClass))
-		{	
-			/**If we already have a dialogue running make sure its cleaned up before we begin a new one */
-			if (CurrentDialogue)
-			{
-				OnDialogueFinished.Broadcast(CurrentDialogue);
+		//Server constructs the dialogue, grabs the authoritative dialogue lines, and passes them to the client for it to begin dialogue 
+		if (SetCurrentDialogue(DialogueClass, StartFromID))
+		{
+			OnDialogueBegan.Broadcast(CurrentDialogue);
 
-				CurrentDialogue->Deinitialize();
-				CurrentDialogue = nullptr;
+			if (GetNetMode() != NM_Standalone)
+			{
+				ClientBeginDialogue(DialogueClass, CurrentDialogue->MakeIDsFromNPCNodes(CurrentDialogue->NPCReplyChain), CurrentDialogue->MakeIDsFromPlayerNodes(CurrentDialogue->AvailableResponses));
 			}
 
-			//Attempt to begin the dialogue, and if successful inform client to do the same 
-			CurrentDialogue = MakeDialogue(DialogueClass, DefaultAvatar, StartFromID);
-
 			if (CurrentDialogue)
-			{
-				OnDialogueBegan.Broadcast(CurrentDialogue);
-
-				if (GetNetMode() != NM_Standalone)
-				{
-					ClientBeginDialogue(DialogueClass, DefaultAvatar, CurrentDialogue->MakeIDsFromNPCNodes(CurrentDialogue->NPCReplyChain), CurrentDialogue->MakeIDsFromPlayerNodes(CurrentDialogue->AvailableResponses));
-				}
-
 				CurrentDialogue->Play();
 
-				return true;
-			}
+			return true;
 		}
 	}
 
 	return false;
 }
 
-void UNarrativeComponent::ClientBeginDialogue_Implementation(TSubclassOf<class UDialogue> DialogueClass, class AActor* NPC, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs)
+void UNarrativeComponent::ClientBeginDialogue_Implementation(TSubclassOf<class UDialogue> DialogueClass, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs)
 {
-	//Server constructs the dialogue, then replicates it back to the client so it can begin it
-	if (!HasAuthority() && IsValid(DialogueClass))
+	if (IsValid(DialogueClass))
 	{
-		/**If we already have a dialogue running make sure its cleaned up before we begin a new one */
-		if (CurrentDialogue)
+		//Server constructs the dialogue, then replicates it back to the client so it can begin it
+		if (!HasAuthority())
 		{
-			OnDialogueFinished.Broadcast(CurrentDialogue);
+			if (SetCurrentDialogue(DialogueClass))
+			{
+				//Created dialogue won't have a valid chunk yet on the client - use the servers authed chunk it sent
+				ClientRecieveDialogueChunk(NPCReplyChainIDs, AvailableResponseIDs);
 
-			CurrentDialogue->Deinitialize();
-			CurrentDialogue = nullptr;
-		}
-
-		//Attempt to begin the dialogue, and if successful inform client to do the same 
-		CurrentDialogue = MakeDialogue(DialogueClass, NPC);
-
-		if (CurrentDialogue)
-		{
-			//Created dialogue won't have a valid chunk yet on the client - use the servers authed chunk it sent
-			ClientRecieveDialogueChunk(NPCReplyChainIDs, AvailableResponseIDs);
-
-			OnDialogueBegan.Broadcast(CurrentDialogue);
+				OnDialogueBegan.Broadcast(CurrentDialogue);
+			}
 		}
 	}
 }
 
+void UNarrativeComponent::BeginPartyDialogue(TSubclassOf<class UDialogue> Dialogue, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs)
+{
+	if (HasAuthority() && PartyComponent)
+	{
+		//Tell the client its began a party dialogue, let it construct it 
+		ClientBeginPartyDialogue(Dialogue, NPCReplyChainIDs, AvailableResponseIDs);
+
+		//By pointing current dialogue at our parties dialogue, the solo dialogue stuff that has already been coded should handle the local dialogue fine! 
+		CurrentDialogue = PartyComponent->CurrentDialogue;
+	}
+
+}
+
+void UNarrativeComponent::ClientBeginPartyDialogue_Implementation(TSubclassOf<class UDialogue> Dialogue, const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs)
+{
+	//Servers began a party dialogue, and now we need to begin ours. 
+	if (PartyComponent)
+	{
+		PartyComponent->ClientBeginDialogue(Dialogue, NPCReplyChainIDs, AvailableResponseIDs);
+
+		checkf(PartyComponent->CurrentDialogue,TEXT("We tried starting a dialogue on our party component locally, but it has failed for some reason. "));
+
+		//By pointing current dialogue at our parties dialogue, the solo dialogue stuff that has already been coded should handle the local dialogue fine! 
+		CurrentDialogue = PartyComponent->CurrentDialogue;
+	}
+}
 
 void UNarrativeComponent::ClientExitDialogue_Implementation()
 {
-	if (!HasAuthority())
+	if (CurrentDialogue)
 	{
-		ExitDialogue();
+		OnDialogueFinished.Broadcast(CurrentDialogue, false);
+
+		CurrentDialogue->Deinitialize();
+		CurrentDialogue = nullptr;
+	}
+
+}
+
+void UNarrativeComponent::ClientExitPartyDialogue_Implementation()
+{
+	if (PartyComponent)
+	{
+		PartyComponent->ClientExitDialogue();
+
+		CurrentDialogue = nullptr;
 	}
 }
 
 void UNarrativeComponent::ClientRecieveDialogueChunk_Implementation(const TArray<FName>& NPCReplyChainIDs, const TArray<FName>& AvailableResponseIDs)
 {
-	if (!HasAuthority() && CurrentDialogue)
+	if (!HasAuthority())
 	{
-		CurrentDialogue->ClientReceiveDialogueChunk(NPCReplyChainIDs, AvailableResponseIDs);
+		if (CurrentDialogue)
+		{
+			CurrentDialogue->ClientReceiveDialogueChunk(NPCReplyChainIDs, AvailableResponseIDs);
+		}
 	}
 }
 
@@ -359,32 +418,27 @@ void UNarrativeComponent::TryExitDialogue()
 	{
 		if(HasAuthority())
 		{
-			ExitDialogue();
+			if (CurrentDialogue->OwningComp)
+			{
+				CurrentDialogue->OwningComp->ExitDialogue();
+			}
 		}
 		else
 		{
-			ServerExitDialogue();
+			ServerTryExitDialogue();
 		}
 	}
 }
 
 void UNarrativeComponent::ExitDialogue()
 {
-	if (CurrentDialogue)
+	if (HasAuthority())
 	{
-		if (HasAuthority())
-		{
-			ClientExitDialogue();
-		}
-
-		OnDialogueFinished.Broadcast(CurrentDialogue);
-
-		CurrentDialogue->Deinitialize();
-		CurrentDialogue = nullptr;
+		ClientExitDialogue();
 	}
 }
 
-void UNarrativeComponent::ServerExitDialogue_Implementation()
+void UNarrativeComponent::ServerTryExitDialogue_Implementation()
 {
 	TryExitDialogue();
 }
@@ -394,21 +448,58 @@ bool UNarrativeComponent::IsInDialogue()
 	return CurrentDialogue != nullptr;
 }
 
-void UNarrativeComponent::SelectDialogueOption(class UDialogueNode_Player* Option)
+void UNarrativeComponent::TrySelectDialogueOption(class UDialogueNode_Player* Option)
 {
-
-	if (CurrentDialogue && Option)
+	//Ask the server to select the option 
+	if (CurrentDialogue && CurrentDialogue->CanSelectDialogueOption(Option))
 	{
-		if (!HasAuthority())
+		if (HasAuthority())
 		{
-			/*If we're not auth we need to ask the server to select the dialogue option. Dialogue pointers can't be passed over the
-			network so we just pass the ID, which the server resolves back into the pointer on its end */
+			if (APlayerController* OwningPC = GetOwningController())
+			{
+				if (CurrentDialogue && CurrentDialogue->OwningComp)
+				{
+					CurrentDialogue->OwningComp->SelectDialogueOption(Option, OwningPC->PlayerState);
+				}
+			}
+		}
+		else
+		{
 			ServerSelectDialogueOption(Option->GetID());
 		}
-
-		CurrentDialogue->SelectDialogueOption(Option);
 	}
+}
 
+void UNarrativeComponent::SelectDialogueOption(class UDialogueNode_Player* Option, class APlayerState* Selector)
+{
+	if (HasAuthority() && Option && CurrentDialogue)
+	{
+		const bool bSelectAccepted = CurrentDialogue->SelectDialogueOption(Option);
+
+		if (bSelectAccepted && GetNetMode() != NM_Standalone)
+		{
+			ClientSelectDialogueOption(Option->GetID(), Selector);
+		}
+	}
+}
+
+void UNarrativeComponent::ClientSelectDialogueOption_Implementation(const FName& OptionID, class APlayerState* Selector)
+{
+	if (CurrentDialogue)
+	{
+		if (UDialogueNode_Player* Option = CurrentDialogue->GetPlayerReplyByID(OptionID))
+		{
+			//We need to aim the camera at the person that actually said the line 
+			if (Selector)
+			{
+				CurrentDialogue->SetPartyCurrentSpeaker(Selector);
+			}
+
+			const bool bSelected = CurrentDialogue->SelectDialogueOption(Option);
+
+			check(bSelected);
+		}
+	}
 }
 
 void UNarrativeComponent::ServerSelectDialogueOption_Implementation(const FName& OptionID)
@@ -418,13 +509,52 @@ void UNarrativeComponent::ServerSelectDialogueOption_Implementation(const FName&
 	{
 		if (UDialogueNode_Player* OptionNode = CurrentDialogue->GetPlayerReplyByID(OptionID))
 		{
-			SelectDialogueOption(OptionNode);
+			TrySelectDialogueOption(OptionNode);
 		}
 		else
 		{
 			UE_LOG(LogNarrative, Warning, TEXT("UNarrativeComponent::ServerSelectDialogueOption_Implementation failed to resolve dialogue option %s."), *OptionID.ToString());
 		}
 	}
+}
+
+bool UNarrativeComponent::TrySkipCurrentDialogueLine()
+{
+	if (CurrentDialogue && CurrentDialogue->CanSkipCurrentLine())
+	{
+		if(HasAuthority())
+		{
+			if (CurrentDialogue->OwningComp)
+			{
+				return CurrentDialogue->OwningComp->SkipCurrentDialogueLine();
+			}
+		}
+		else
+		{
+			ServerTrySkipCurrentDialogueLine();
+		}
+		return true;
+	}
+	return false;
+}
+
+bool UNarrativeComponent::SkipCurrentDialogueLine()
+{
+	if (HasAuthority() && CurrentDialogue)
+	{
+		/**To ensure clients are in sync, we skip the current line on the server, and then send the new chunk through to the clients. 
+		This may be a little overkill as we re-send the entire chunk with each skip, however chunks are just a few lightweight FNames so no harm here.
+		
+		Resending the chunk ensures clients and server are seeing exactly the same thing, which is the top priority. */
+		return CurrentDialogue->SkipCurrentLine();
+	}
+
+	return false;
+}
+
+void UNarrativeComponent::ServerTrySkipCurrentDialogueLine_Implementation()
+{
+	TrySkipCurrentDialogueLine();
 }
 
 bool UNarrativeComponent::CompleteNarrativeDataTask(const UNarrativeDataTask* Task, const FString& Argument, const int32 Quantity)
@@ -476,15 +606,14 @@ bool UNarrativeComponent::CompleteNarrativeDataTask(const FString& TaskName, con
 		return false;
 	}
 
-	return false;
 }
 
-class UQuest* UNarrativeComponent::CreateQuest(TSubclassOf<class UQuest> QuestClass)
+class UQuest* UNarrativeComponent::MakeQuestInstance(TSubclassOf<class UQuest> QuestClass)
 {
 	if (IsValid(QuestClass))
 	{
 		//If the quest is already in the players quest list issue a warning
-		if (IsValid(GetQuest(QuestClass)))
+		if (IsValid(GetQuestInstance(QuestClass)))
 		{
 			UE_LOG(LogNarrative, Warning, TEXT("Narrative was asked to begin a quest the player is already doing. Use RestartQuest() to replay a started quest. "));
 			return nullptr;
@@ -523,7 +652,7 @@ bool UNarrativeComponent::CompleteNarrativeTask_Internal(const FString& RawTaskS
 	return false;
 }
 
-class UDialogue* UNarrativeComponent::MakeDialogue(TSubclassOf<class UDialogue> DialogueClass, class AActor* NPC, FName StartFromID /*= NAME_None*/)
+class UDialogue* UNarrativeComponent::MakeDialogueInstance(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID /*= NAME_None*/)
 {
 	if (IsValid(DialogueClass))
 	{
@@ -535,7 +664,7 @@ class UDialogue* UNarrativeComponent::MakeDialogue(TSubclassOf<class UDialogue> 
 
 		if (UDialogue* NewDialogue = NewObject<UDialogue>(GetOwner(), DialogueClass))
 		{
-			if (NewDialogue->Initialize(this, NPC, StartFromID))
+			if (NewDialogue->Initialize(this, StartFromID))
 			{
 				return NewDialogue;
 			}
@@ -568,27 +697,6 @@ int32 UNarrativeComponent::GetNumberOfTimesTaskWasCompleted(const UNarrativeData
 	return 0;
 }
 
-bool UNarrativeComponent::HasCompletedTaskInQuest(TSubclassOf<class UQuest> QuestClass, const UNarrativeDataTask* Task, const FString& Name) const
-{
-	if (!Task || !IsValid(QuestClass))
-	{
-		return false;
-	}
-
-	const FString FormattedAction = Task->MakeTaskString(Name);
-
-	for (auto& QuestInProgress : QuestList)
-	{
-		if (QuestInProgress && QuestInProgress->GetClass()->IsChildOf(QuestClass))
-		{
-			return QuestInProgress->QuestActivities.Contains(FormattedAction);
-		}
-	}
-
-	return false;
-}
-
-
 void UNarrativeComponent::SendNarrativeUpdate(const FNarrativeUpdate& Update)
 {
 	if (HasAuthority() && GetNetMode() != NM_Standalone)
@@ -600,29 +708,20 @@ void UNarrativeComponent::SendNarrativeUpdate(const FNarrativeUpdate& Update)
 
 	//STALE UPDATE REMOVAL: Disabled as was causing sync issues 
 	//Remove stale updates from the pendingupdatelist, otherwise it might grow to be huge
-	//TODO could keeping the update list history around be used to add more functionality? Its essentially a history of everything the player has done in order, could be valuable
-	//uint32 LatestStaleUpdateIdx = -1;
-	//bool bFoundStaleUpdates = false;
-	//const float UpdateStaleLimit = 30.f;
+	//TODO could the update list history around be used to add more functionality? Its essentially a history of everything the player has done in order, could be valuable
 
-	//if (PendingUpdateList.Num() > 1)
-	//{
-	//	for (LatestStaleUpdateIdx = PendingUpdateList.Num() - 2; LatestStaleUpdateIdx > 0; --LatestStaleUpdateIdx)
-	//	{
-	//		if (PendingUpdateList.IsValidIndex(LatestStaleUpdateIdx) && GetWorld()->TimeSince(PendingUpdateList[LatestStaleUpdateIdx].CreationTime) > UpdateStaleLimit)
-	//		{
-	//			bFoundStaleUpdates = true;
-	//			break;
-	//		}
-	//	}
+}
 
-
-	//	if (bFoundStaleUpdates)
-	//	{
-	//		//PendingUpdateList.RemoveAt(0, LatestStaleUpdateIdx + 1);
-	//		//UE_LOG(LogNarrative, Warning, TEXT("Found and removed %d stale updates. PendingUpdateList is now %d in size."), LatestStaleUpdateIdx + 1, PendingUpdateList.Num());
-	//	}
-	//}
+void UNarrativeComponent::OnRep_PartyComponent(class UNarrativePartyComponent* OldPartyComponent)
+{
+	if (PartyComponent)
+	{
+		OnJoinedParty.Broadcast(PartyComponent, OldPartyComponent);
+	}
+	else
+	{
+		OnLeaveParty.Broadcast(OldPartyComponent);
+	}
 }
 
 void UNarrativeComponent::OnRep_PendingUpdateList()
@@ -648,18 +747,23 @@ void UNarrativeComponent::OnRep_PendingUpdateList()
 							CompleteNarrativeTask_Internal(Update.Payload, true, Update.IntPayload[0]);
 						}
 					}
+					break;
 					case EUpdateType::UT_TaskProgressMade:
 					{
 						if (Update.IntPayload.IsValidIndex(0) && Update.IntPayload.IsValidIndex(1))
 						{
-							if (UQuest* Quest = GetQuest(Update.QuestClass))
+							const uint8 TaskIndex = Update.IntPayload[0];
+							const uint8 NewProgress = Update.IntPayload[1];
+
+							if (UQuest* Quest = GetQuestInstance(Update.QuestClass))
 							{
 								FName BranchID = FName(Update.Payload);
+
 								if (UQuestBranch* Branch = Quest->GetBranch(BranchID))
 								{
-									if (Branch->QuestTasks.IsValidIndex(Update.IntPayload[0]))
+									if (Branch->QuestTasks.IsValidIndex(TaskIndex))
 									{
-										Branch->QuestTasks[Update.IntPayload[0]]->SetProgress(Update.IntPayload[1]);
+										Branch->QuestTasks[TaskIndex]->SetProgressInternal(NewProgress, true);
 									}
 								}
 							}
@@ -683,12 +787,12 @@ void UNarrativeComponent::OnRep_PendingUpdateList()
 					break;
 					case EUpdateType::UT_QuestNewState:
 					{
-						if (UQuest* Quest = GetQuest(Update.QuestClass))
+						if (UQuest* Quest = GetQuestInstance(Update.QuestClass))
 						{
 							//Server should always have a valid state to tell us to go to
 							check(!Update.Payload.IsEmpty());
 
-							Quest->EnterState(Quest->GetState(FName(Update.Payload)));
+							Quest->EnterState_Internal(Quest->GetState(FName(Update.Payload)));
 						}
 					}
 					break;
@@ -771,10 +875,10 @@ bool UNarrativeComponent::IsQuestValid(const UQuest* Quest, FString& OutError)
 
 void UNarrativeComponent::NarrativeDataTaskCompleted(const UNarrativeDataTask* NarrativeTask, const FString& Name)
 {
-	//If we have a shared narrative component, we should forward any tasks we complete to that component as well as this one
-	if (SharedNarrativeComp)
+	//If we have a Party narrative component, we should forward any tasks we complete to that component as well as this one
+	if (PartyComponent)
 	{
-		SharedNarrativeComp->CompleteNarrativeDataTask(NarrativeTask, Name);
+		PartyComponent->CompleteNarrativeDataTask(NarrativeTask, Name);
 	}
 }
 
@@ -823,6 +927,8 @@ void UNarrativeComponent::QuestNewState(UQuest* Quest, const UQuestState* NewSta
 
 		if (HasAuthority() && GetNetMode() != NM_Standalone)
 		{
+			//The server doesn't actually need to tell clients when they get to a new state, it can just send progress updates
+			// and when progress == requiredprogress the client can advance to the state
 			//SendNarrativeUpdate(FNarrativeUpdate::QuestNewState(Quest->GetClass(), NewState->GetID()));
 		}
 	}
@@ -902,14 +1008,13 @@ void UNarrativeComponent::DialogueBegan(UDialogue* Dialogue)
 	
 }
 
-void UNarrativeComponent::DialogueFinished(UDialogue* Dialogue)
+void UNarrativeComponent::DialogueFinished(UDialogue* Dialogue, const bool bStartingNewDialogue)
 {
 
 }
 
 APawn* UNarrativeComponent::GetOwningPawn() const
 {
-
 	if (OwnerPC)
 	{
 		return OwnerPC->GetPawn();
@@ -952,6 +1057,20 @@ APlayerController* UNarrativeComponent::GetOwningController() const
 		return Cast<APlayerController>(OwningPawn->GetController());
 	}
 
+	return nullptr;
+}
+
+class UDialogue* UNarrativeComponent::GetCurrentDialogue() const
+{
+	if (PartyComponent && PartyComponent->CurrentDialogue)
+	{
+		return PartyComponent->CurrentDialogue;
+	}
+	else if (CurrentDialogue)
+	{
+		return CurrentDialogue;
+	}
+	
 	return nullptr;
 }
 
@@ -1000,7 +1119,7 @@ TArray<UQuest*> UNarrativeComponent::GetAllQuests() const
 	return QuestList;
 }
 
-class UQuest* UNarrativeComponent::GetQuest(TSubclassOf<class UQuest> QuestClass) const
+class UQuest* UNarrativeComponent::GetQuestInstance(TSubclassOf<class UQuest> QuestClass) const
 {
 	for (auto& QIP : QuestList)
 	{
@@ -1134,7 +1253,16 @@ bool UNarrativeComponent::Load_Internal(const TArray<FNarrativeSavedQuest>& Save
 {
 	bIsLoading = true;
 
-	QuestList.Empty();
+	//Remove all our current quests - we're about the load the new ones from the save file 
+	for (int32 i = QuestList.Num() - 1; i >= 0; --i)
+	{
+		if (QuestList.IsValidIndex(i))
+		{
+			ForgetQuest(QuestList[i]->GetClass());
+		}
+	}
+
+	//QuestList.Empty();
 	MasterTaskList.Empty();
 
 	MasterTaskList = NewMasterList;
@@ -1147,8 +1275,7 @@ bool UNarrativeComponent::Load_Internal(const TArray<FNarrativeSavedQuest>& Save
 			//Restore all quest branches - this is messy because our TMap design had to be changed into TArrays because TMaps cant replicate 
 			if (UQuestState* CurrentState = BegunQuest->GetCurrentState())
 			{
-				//TODO We are restoring progress on current states branches, but not previous quest branches. If we ever loop back to them their progress will be lost, fix this
-				for (auto& Branch : CurrentState->Branches)
+				for (auto& Branch : BegunQuest->Branches)//(auto& Branch : CurrentState->Branches)
 				{
 					//For each branch leading off the current state, set its currentprogress to the saved one
 					for (auto& SavedBranch : SaveQuest.QuestBranches)
@@ -1159,9 +1286,12 @@ bool UNarrativeComponent::Load_Internal(const TArray<FNarrativeSavedQuest>& Save
 							{
 								if (Branch->QuestTasks.IsValidIndex(i) && SavedBranch.TasksProgress.IsValidIndex(i))
 								{
-									Branch->QuestTasks[i]->SetProgress(SavedBranch.TasksProgress[i]);
+									Branch->QuestTasks[i]->BeginTaskInit();
+									Branch->QuestTasks[i]->SetProgressInternal(SavedBranch.TasksProgress[i]);
 								}
 							}
+
+							continue;
 						}
 					}
 				}
@@ -1184,10 +1314,4 @@ bool UNarrativeComponent::Load_Internal(const TArray<FNarrativeSavedQuest>& Save
 
 	return true;
 }
-
-void UNarrativeComponent::SetSharedNarrativeComponent(UNarrativeComponent* NewSharedNarrativeComponent)
-{
-	SharedNarrativeComp = NewSharedNarrativeComponent;
-}
-
 

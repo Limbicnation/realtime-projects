@@ -45,9 +45,7 @@ void UQuestState::Deactivate()
 
 UQuestBranch::UQuestBranch()
 {
-	//Description = LOCTEXT("QuestBranchDescription", "Describe what the player needs to do to complete this task.");
 
-	Tasks.SetNum(1);
 }
 
 void UQuestBranch::Activate()
@@ -80,12 +78,12 @@ void UQuestBranch::OnQuestTaskComplete(class UNarrativeTask* UpdatedTask)
 {
 	if (OwningQuest)
 	{
-		OwningQuest->OnQuestTaskCompleted(UpdatedTask, this);
-
 		if (AreTasksComplete())
 		{
 			OwningQuest->TakeBranch(this);
 		}
+
+		OwningQuest->OnQuestTaskCompleted(UpdatedTask, this);
 	}
 }
 
@@ -199,7 +197,7 @@ void UQuestNode::Activate()
 			OwningQuest->ProcessEvent(Func, &Parms);
 		}
 
-		ProcessEvents(OwningQuest->OwningPawn, OwningQuest->OwningController, OwningQuest->OwningComp, EEventRuntime::Start);
+		ProcessEvents(OwningQuest->GetOwningPawn(), OwningQuest->GetOwningController(), OwningQuest->GetOwningComp(), EEventRuntime::Start);
 	}
 }
 
@@ -222,7 +220,7 @@ void UQuestNode::Deactivate()
 			OwningQuest->ProcessEvent(Func, &Parms);
 		}
 
-		ProcessEvents(OwningQuest->OwningPawn, OwningQuest->OwningController, OwningQuest->OwningComp, EEventRuntime::End);
+		ProcessEvents(OwningQuest->GetOwningPawn(), OwningQuest->GetOwningController(), OwningQuest->GetOwningComp(), EEventRuntime::End);
 	}
 }
 
@@ -271,7 +269,7 @@ class UNarrativeComponent* UQuestNode::GetOwningNarrativeComp() const
 {
 	if (UQuest* Quest = GetOwningQuest())
 	{
-		return Quest->GetOwningNarrativeComponent();
+		return Quest->GetOwningComp();
 	}
 
 	return nullptr;

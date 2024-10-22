@@ -45,18 +45,6 @@ class UNarrativeComponent* UNarrativeFunctionLibrary::GetNarrativeComponentFromT
 	return nullptr;
 }
 
-
-class UNarrativeComponent* UNarrativeFunctionLibrary::GetSharedNarrativeComponentFromTarget(AActor* Target)
-{
-
-	if (UNarrativeComponent* NarrativeComp = GetNarrativeComponentFromTarget(Target))
-	{
-		return NarrativeComp->SharedNarrativeComp;
-	}
-
-	return nullptr;
-}
-
 bool UNarrativeFunctionLibrary::CompleteNarrativeDataTask(class UNarrativeComponent* Target, const UNarrativeDataTask* Task, const FString& Argument, const int32 Quantity)
 {
 	if (Target)

@@ -23,7 +23,7 @@
 #include "DialogueBlueprint.h"
 #include "DialogueGraphNode.h"
 #include "Dialogue.h"
-#include "Windows/WindowsPlatformApplicationMisc.h"
+#include "HAL/PlatformApplicationMisc.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Framework/Notifications/NotificationManager.h" 
 #include "DialogueEditorCommands.h"
@@ -35,6 +35,10 @@
 #include "K2Node_CustomEvent.h"
 #include "DialogueGraphNode_NPC.h"
 #include "DialogueGraphNode_Player.h"
+#include <Engine/World.h>
+#include "DialogueNodeUserWidget.h"
+#include "LevelEditor.h"
+#include "NarrativeDialogueSettings.h"
 
 #define LOCTEXT_NAMESPACE "DialogueAssetEditor"
 
@@ -131,23 +135,26 @@ void FDialogueGraphEditor::RegisterTabSpawners(const TSharedRef<class FTabManage
 	FWorkflowCentricApplication::RegisterTabSpawners(InTabManager);
 }
 
-void FDialogueGraphEditor::InitDialogueEditor(const EToolkitMode::Type Mode, const TSharedPtr< class IToolkitHost >& InitToolkitHost, UDialogueBlueprint* InDialogue)
+void FDialogueGraphEditor::OnWorldChange(UWorld* World, EMapChangeType MapChangeType)
 {
-	DialogueBlueprint = InDialogue; 
-
-	if (DialogueBlueprint)
+	//Dialogue graph nodes will be referencing the UWorld, and if it changes this will breakcc
+	if (World)
 	{
-		if (DialogueBlueprint->DialogueTemplate)
+		for (TObjectIterator<UUserWidget> Itr; Itr; ++Itr)
 		{
-			for (auto& Node : DialogueBlueprint->DialogueTemplate->GetNodes())
+			UUserWidget* Widget = *Itr;
+
+			if (Widget->IsA<UDialogueNodeUserWidget>())
 			{
-				if (Node)
-				{
-					Node->ConvertLegacyNarrativeProps();
-				}
+				Widget->Rename(nullptr, GetTransientPackage());
 			}
 		}
 	}
+}
+
+void FDialogueGraphEditor::InitDialogueEditor(const EToolkitMode::Type Mode, const TSharedPtr< class IToolkitHost >& InitToolkitHost, UDialogueBlueprint* InDialogue)
+{
+	DialogueBlueprint = InDialogue; 
 
 	if (!Toolbar.IsValid())
 	{
@@ -186,6 +193,8 @@ void FDialogueGraphEditor::InitDialogueEditor(const EToolkitMode::Type Mode, con
 
 	PostLayoutBlueprintEditorInitialization();
 
+	FLevelEditorModule& LevelEditor = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+	LevelEditor.OnMapChanged().AddRaw(this, &FDialogueGraphEditor::OnWorldChange);
 }
 
 FName FDialogueGraphEditor::GetToolkitFName() const
@@ -424,6 +433,10 @@ void FDialogueGraphEditor::Dialogue_PasteNodes()
 
 void FDialogueGraphEditor::Dialogue_PasteNodesHere(const FVector2D& Location)
 {
+
+	//Pasting nodes is disabled as still causing issues in N3 
+	return;
+
 	TSharedPtr<SGraphEditor> CurrentGraphEditor = FocusedGraphEdPtr.Pin();
 	if (!CurrentGraphEditor.IsValid())
 	{
@@ -610,7 +623,17 @@ void FDialogueGraphEditor::Dialogue_PasteNodesHere(const FVector2D& Location)
 					GraphOwner->MarkPackageDirty();
 				}
 
-				PasteLoc += FVector2D(400.f, 0.f);
+				if (const UNarrativeDialogueSettings* DialogueSettings = GetDefault<UNarrativeDialogueSettings>())
+				{
+					if (DialogueSettings->bEnableVerticalWiring)
+					{
+						PasteLoc += FVector2D(0.f, 250.f);
+					}
+					else
+					{
+						PasteLoc += FVector2D(550.f, 0.f);
+					}
+				}
 
 				LastNode = Node;
 			}
@@ -654,7 +677,7 @@ bool FDialogueGraphEditor::Dialogue_CanDuplicateNodes() const
 	//Duplicating nodes is disabled for now
 	return false;
 
-	return CanCopyNodes();
+	//return CanCopyNodes();
 }
 
 bool FDialogueGraphEditor::Dialogue_GetBoundsForSelectedNodes(class FSlateRect& Rect, float Padding)

@@ -8,12 +8,12 @@ DEFINE_LOG_CATEGORY(LogNarrativeRuntime);
 
 void FNarrativeModule::StartupModule()
 {
-	UE_LOG(LogNarrativeRuntime, Warning, TEXT("Narrative Runtime loaded."));
+	UE_LOG(LogNarrativeRuntime, Log, TEXT("Narrative Runtime loaded."));
 }
 
 void FNarrativeModule::ShutdownModule()
 {
-	UE_LOG(LogNarrativeRuntime, Warning, TEXT("Narrative Runtime unloaded."));
+	UE_LOG(LogNarrativeRuntime, Log, TEXT("Narrative Runtime unloaded."));
 }
 
 #undef LOCTEXT_NAMESPACE

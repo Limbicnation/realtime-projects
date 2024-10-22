@@ -43,9 +43,6 @@ void FQuestEditorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 		{
 			IDetailCategoryBuilder& Category = DetailLayout.EditCategory("Task");
 
-			TSharedPtr<IPropertyHandle> TaskPropHandle = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UQuestBranch, Task));
-			TSharedPtr<IPropertyHandle> TasksPropHandle = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UQuestBranch, Tasks));
-
 			////TODO why isn't this hiding 
 			//if (EditedBranch->bAddMultipleTasks)
 			//{

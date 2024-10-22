@@ -6,6 +6,24 @@
 #include "UObject/NoExportTypes.h"
 #include "NarrativeEvent.generated.h"
 
+
+//How do we handle running this event on a party?
+UENUM()
+enum class EPartyEventPolicy
+{
+	/**The event is run on the party itself - Use this if you want the event to effect the party in some way - for example if you want your event
+	to begin a quest for all members in the party, use this to run the event on the parties narrative component. */
+	Party UMETA(DisplayName = "Party"),
+
+	/**The event is run on every party member - for example if your event gave the player a reward, every member in the party would receive the award.*/
+	AllPartyMembers UMETA(DisplayName="All Party Members"),
+
+	/**The event is run on the party leader - for example if your event gave the player a reward, only the party leader would receieve the award.*/
+	PartyLeader UMETA(DisplayName = "Party Leader")
+
+};
+
+
 /**
 * Used for picking when an event should run
 */
@@ -69,18 +87,17 @@ public:
 		return nullptr;
 	}
 
-
-	/**
-	If true, run this event on the players shared narrative comp instead of their local one
-	*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Event")
-	bool bUseSharedComponent = false;
-
 	/**
 	Defines when the event should be executed 
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Event")
 	EEventRuntime EventRuntime;
+
+	/**
+	Defines how events should be executed when the dialogue is playing as a party. Ignored if not in a party. 
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Parties")
+	EPartyEventPolicy PartyEventPolicy;
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Event")
 	bool ExecuteEvent(APawn* Pawn, APlayerController* Controller, class UNarrativeComponent* NarrativeComponent);
@@ -90,4 +107,9 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Event")
 	FString GetGraphDisplayText();
 	virtual FString GetGraphDisplayText_Implementation();
+
+	/**If the event is on a dialogue option, this is the text we'll show after the line. (Begin Quest, etc)*/
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Event")
+	FText GetHintText();
+	virtual FText GetHintText_Implementation();
 };

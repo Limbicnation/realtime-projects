@@ -14,11 +14,6 @@ void UQuestBlueprintGeneratedClass::InitializeQuest(class UQuest* Quest)
 	}
 }
 
-void UQuestBlueprintGeneratedClass::Link(FArchive& Ar, bool bRelinkExistingProperties)
-{
-	Super::Link(Ar, bRelinkExistingProperties);
-}
-
 void UQuestBlueprintGeneratedClass::PostLoad()
 {
 	Super::PostLoad();
@@ -28,11 +23,6 @@ void UQuestBlueprintGeneratedClass::PostLoad()
 		// We don't want any of these flags to carry over from the WidgetBlueprint
 		QuestTemplate->ClearFlags(RF_Public | RF_ArchetypeObject | RF_DefaultSubObject);
 	}
-}
-
-void UQuestBlueprintGeneratedClass::PurgeClass(bool bRecompilingOnLoad)
-{
-	Super::PurgeClass(bRecompilingOnLoad);
 }
 
 void UQuestBlueprintGeneratedClass::SetQuestTemplate(UQuest* InQuestTemplate)

@@ -13,29 +13,63 @@
 #include "NarrativeDialogueSettings.h"
 #include "LevelSequencePlayer.h"
 #include "LevelSequenceActor.h"
+#include "Sound/SoundBase.h"
+#include "NarrativePartyComponent.h"
 
 #define LOCTEXT_NAMESPACE "DialogueSM"
 
 UDialogueNode::UDialogueNode()
 {
 
-
+	bIsSkippable = true;
 
 }	
 
-FDialogueLine UDialogueNode::GetRandomLine() const
+FDialogueLine UDialogueNode::GetRandomLine(const bool bStandalone) const
 {
+	FDialogueLine NewLine = Line;
+
 	//Construct the line instead of adding it as a member as to not break dialogues made pre 2.2
-	if (!AlternativeLines.Num())
-	{
-		return Line;
-	}
-	else
+	if (AlternativeLines.Num())
 	{
 		TArray<FDialogueLine> AllLines = AlternativeLines;
 		AllLines.Add(Line);
-		return AllLines[FMath::RandRange(0, AllLines.Num() - 1)];
+		NewLine = AllLines[FMath::RandRange(0, AllLines.Num() - 1)];
 	}
+
+	if (NewLine.Duration == ELineDuration::LD_Default)
+	{
+		if (NewLine.DialogueSound)
+		{
+			NewLine.Duration = ELineDuration::LD_WhenAudioEnds;
+		}
+		else if (NewLine.Shot && NewLine.Text.IsEmptyOrWhitespace())
+		{
+			NewLine.Duration = ELineDuration::LD_WhenSequenceEnds;
+		}
+		else
+		{
+			NewLine.Duration = ELineDuration::LD_AfterReadingTime;
+		}
+	}
+
+	//The server doesn't receieve audio and sequence end events so it needs to use duration
+	if (!bStandalone)
+	{
+		if (NewLine.Duration == ELineDuration::LD_WhenAudioEnds)
+		{
+			NewLine.Duration = ELineDuration::LD_AfterDuration;
+			NewLine.DurationSecondsOverride = NewLine.DialogueSound ? NewLine.DialogueSound->GetDuration() : 0.2f;
+		}
+		else if (NewLine.Duration == ELineDuration::LD_WhenSequenceEnds)
+		{
+			UE_LOG(LogNarrative, Warning, TEXT("When Sequence Ends duration isn't supported in networked games. Falling back to audio length. "));
+			NewLine.Duration = ELineDuration::LD_AfterDuration;
+			NewLine.DurationSecondsOverride = NewLine.DialogueSound ? NewLine.DialogueSound->GetDuration() : 0.2f;
+		}
+	}
+
+	return NewLine;
 }
 
 TArray<class UDialogueNode_NPC*> UDialogueNode::GetNPCReplies(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent)
@@ -59,16 +93,19 @@ TArray<class UDialogueNode_Player*> UDialogueNode::GetPlayerReplies(APlayerContr
 
 	for (auto& PlayerReply : PlayerReplies)
 	{
-		if(PlayerReply && PlayerReply->AreConditionsMet(OwningPawn, OwningController, NarrativeComponent))
+		if (PlayerReply && PlayerReply->AreConditionsMet(OwningPawn, OwningController, NarrativeComponent))
 		{
 			ValidReplies.Add(PlayerReply);
 		}
 	}
 
-	//Sort the replies by their Y position in the graph
-	ValidReplies.Sort([](const UDialogueNode_Player& NodeA, const UDialogueNode_Player& NodeB) {
-		return  NodeA.NodePos.Y < NodeB.NodePos.Y;
-		});
+	if (const UNarrativeDialogueSettings* DialogueSettings = GetDefault<UNarrativeDialogueSettings>())
+	{
+		//Sort the replies by their Y position in the graph
+		ValidReplies.Sort([DialogueSettings](const UDialogueNode_Player& NodeA, const UDialogueNode_Player& NodeB) {
+			return DialogueSettings->bEnableVerticalWiring ? NodeA.NodePos.X < NodeB.NodePos.X : NodeA.NodePos.Y < NodeB.NodePos.Y;
+			});
+	}
 
 	return ValidReplies;
 }
@@ -101,21 +138,14 @@ const bool UDialogueNode::IsMissingCues() const
 	return false;
 }
 
-void UDialogueNode::ConvertLegacyNarrativeProps()
+bool UDialogueNode::IsRoutingNode() const
 {
-	if (!Text.IsEmpty())
+	if (Line.Shot || Line.DialogueSound || Events.Num() || !Line.Text.IsEmptyOrWhitespace())
 	{
-		/*A hack since FDialogueLine was added later and previously lines were just a bunch of seperate data members.
-		So for any users with old dialogues who are upgrading to 3, we need to auto-add these*/
-		Line.DialogueMontage = DialogueMontage;
-		Line.DialogueSound = DialogueSound;
-		Line.Text = Text;
-		Line.Sequence = Sequence;
-		Line.Shot = Shot;
-		
-
-		Text = FText::GetEmpty();
+		return false;
 	}
+
+	return true;
 }
 
 #if WITH_EDITOR
@@ -127,9 +157,23 @@ void UDialogueNode::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 	if (PropertyChangedEvent.MemberProperty)
 	{ 
 		//If we changed the ID, make sure it doesn't conflict with any other IDs in the Dialogue
-		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UDialogueNode, Line))
+		if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(FDialogueLine, Text))
 		{
-			GenerateIDFromText();
+			FString DialogueAssetName = "";
+
+			if (UDialogue* Dialogue = Cast<UDialogue>(GetOuter()))
+			{
+				if (UObject* DialogueBP = Cast<UObject>(Dialogue->GetOuter()))
+				{
+					DialogueAssetName = DialogueBP->GetFName().ToString();
+				}
+			}
+
+			//Only autogenerate the ID if an ID hasn't been assigned yet 
+			if (HasDefaultID())
+			{
+				GenerateIDFromText();
+			}
 		}
 	}
 }
@@ -210,7 +254,34 @@ void UDialogueNode::GenerateIDFromText()
 		}
 	}
 
-	SetID(FName(Prefix + '_' + FinalString));
+	FString DialogueAssetName = "";
+
+	if (UDialogue* Dialogue = Cast<UDialogue>(GetOuter()))
+	{
+		if (UObject* DialogueBP = Cast<UObject>(Dialogue->GetOuter()))
+		{
+			DialogueAssetName += DialogueBP->GetFName().ToString();
+			DialogueAssetName += "_";
+		}
+	}
+
+	SetID(FName(DialogueAssetName + Prefix + '_' + FinalString));
+}
+
+bool UDialogueNode::HasDefaultID() const
+{
+	FString DialogueAssetName = "";
+
+	if (UDialogue* Dialogue = Cast<UDialogue>(GetOuter()))
+	{
+		if (UObject* DialogueBP = Cast<UObject>(Dialogue->GetOuter()))
+		{
+			DialogueAssetName = DialogueBP->GetName();
+		}
+	}
+
+	//Only autogenerate the ID if an ID hasn't been assigned yet 
+	return (ID.ToString() == DialogueAssetName + "_" + GetName());
 }
 
 #endif
@@ -231,15 +302,40 @@ TArray<class UDialogueNode_NPC*> UDialogueNode_NPC::GetReplyChain(APlayerControl
 		}
 
 		TArray<UDialogueNode_NPC*> NPCRepliesToRet = CurrentNode->NPCReplies;
-
-		//Need to process the conditions using higher nodes first 
-		NPCRepliesToRet.Sort([](const UDialogueNode_NPC& NodeA, const UDialogueNode_NPC& NodeB) {
-			return  NodeA.NodePos.Y < NodeB.NodePos.Y;
-			});
-
+		if (const UNarrativeDialogueSettings* DialogueSettings = GetDefault<UNarrativeDialogueSettings>())
+		{
+			//Need to process the conditions using higher/leftmost nodes first 
+			NPCRepliesToRet.Sort([DialogueSettings](const UDialogueNode_NPC& NodeA, const UDialogueNode_NPC& NodeB) {
+				return DialogueSettings->bEnableVerticalWiring ? NodeA.NodePos.X < NodeB.NodePos.X : NodeA.NodePos.Y < NodeB.NodePos.Y;
+				});
+		}
 		//If we don't find another node after this the loop will exit
 		CurrentNode = nullptr;
 
+		//if(UNarrativePartyComponent* PartyComponent = Cast<UNarrativePartyComponent>(NarrativeComponent))
+		//{
+		//	int32 Idx = 0;
+		//	int32 BestReplyIdx = INT_MAX;
+		//	for (auto& Reply : NPCRepliesToRet)
+		//	{
+		//		//If we're a party, find the earliest passing condition across all players
+		//		for (auto& PartyMember : PartyComponent->GetPartyMembers())
+		//		{
+		//			if (Reply != this && Reply->AreConditionsMet(PartyMember->GetOwningPawn(), PartyMember->GetOwningController(), PartyMember))
+		//			{
+		//				if (Idx < BestReplyIdx)
+		//				{
+		//					CurrentNode = Reply;
+		//					BestReplyIdx = Idx;
+		//				}
+		//			}
+		//		}
+
+		//		++Idx;
+		//	}
+		//}
+		//else
+		//{
 		//Find the next valid reply. We'll then repeat this cycle until we run out
 		for (auto& Reply : NPCRepliesToRet)
 		{
@@ -249,10 +345,13 @@ TArray<class UDialogueNode_NPC*> UDialogueNode_NPC::GetReplyChain(APlayerControl
 				break; // just use the first reply with valid conditions
 			}
 		}
+		//}
+
 	}
 
 	return NPCFollowUpReplies;
 }
+
 
 FText UDialogueNode_Player::GetOptionText(class UDialogue* InDialogue) const
 {
@@ -260,7 +359,39 @@ FText UDialogueNode_Player::GetOptionText(class UDialogue* InDialogue) const
 
 	if (InDialogue)
 	{
-		InDialogue->ReplaceStringVariables(TextToUse);
+		//No dialogue line yet because we're just replacing a player replies text
+		FDialogueLine DummyLine;
+		InDialogue->ReplaceStringVariables(this, Line, TextToUse);
+	}
+
+	return TextToUse;
+}
+
+FText UDialogueNode_Player::GetHintText(class UDialogue* InDialogue) const
+{
+	if (!HintText.IsEmptyOrWhitespace())
+	{
+		return HintText;
+	}
+
+	FText TextToUse = FText::GetEmpty();
+	TArray<FText> Hints;
+
+	for (auto& Event : Events)
+	{
+		if (Event)
+		{
+			FText EventHintText = Event->GetHintText();
+			if (!EventHintText.IsEmptyOrWhitespace())
+			{
+				Hints.Add(Event->GetHintText());
+			}
+		}
+	}
+
+	if (Hints.Num())
+	{
+		TextToUse = TextToUse.Join(LOCTEXT("CommaDelim", ", "), Hints);
 	}
 
 	return TextToUse;

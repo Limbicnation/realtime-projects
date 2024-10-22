@@ -12,6 +12,7 @@ UDialogueEditorSettings::UDialogueEditorSettings()
 	RootNodeColor = FLinearColor(0.1f, 0.1f, 0.1f);
 	PlayerNodeColor = FLinearColor(0.65f, 0.28f, 0.f);
 	NPCNodeColor = FLinearColor(0.2f, 0.2f, 0.2f);
+	BacklinkWireColor = FLinearColor(0.254970, 0.548547, 1.000000, 0.800000);
 
 	DefaultNPCDialogueClass = UDialogueNode_NPC::StaticClass();
 	DefaultPlayerDialogueClass = UDialogueNode_Player::StaticClass();
@@ -25,4 +26,15 @@ UDialogueEditorSettings::UDialogueEditorSettings()
 
 	bEnableWarnings = true;
 	bWarnMissingSoundCues = true;
+
+	ForwardSplineHorizontalDeltaRange = 1000.f;
+	ForwardSplineVerticalDeltaRange = 1000.f;
+	BackwardSplineHorizontalDeltaRange = 200.f;
+	BackwardSplineVerticalDeltaRange = 200.f;
+
+	ForwardSplineTangentFromHorizontalDelta = FVector2D(1.f, 0.f);
+	ForwardSplineTangentFromVerticalDelta = FVector2D(1.f, 0.f);
+
+	BackwardSplineTangentFromVerticalDelta = FVector2D(1.5f, 0.f);
+	BackwardSplineTangentFromHorizontalDelta = FVector2D(2.f, 0.f);
 }

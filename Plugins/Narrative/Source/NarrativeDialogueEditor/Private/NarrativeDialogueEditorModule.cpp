@@ -18,6 +18,7 @@
 #include "ISettingsContainer.h"
 #include <ISettingsCategory.h>
 #include "KismetCompiler.h"
+#include "Engine/World.h"
 #include "DialogueBlueprintCompiler.h"
 
 DEFINE_LOG_CATEGORY(LogNarrativeDialogueEditor);
@@ -41,6 +42,8 @@ class FGraphPanelNodeFactory_DialogueGraph : public FGraphPanelNodeFactory
 };
 
 TSharedPtr<FGraphPanelNodeFactory> GraphPanelNodeFactory_DialogueGraph;
+
+
 
 void FNarrativeDialogueEditorModule::StartupModule()
 {
@@ -82,7 +85,9 @@ void FNarrativeDialogueEditorModule::StartupModule()
 	PropertyModule.RegisterCustomClassLayout("DialogueNode_Player", FOnGetDetailCustomizationInstance::CreateStatic(&FDialogueEditorDetails::MakeInstance));
 	//PropertyModule.RegisterCustomPropertyTypeLayout("SpeakerSelector", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FSpeakerSelectorCustomization::MakeInstance));
 	PropertyModule.NotifyCustomizationModuleChanged();
+
 }
+
 
 void FNarrativeDialogueEditorModule::ShutdownModule()
 {
