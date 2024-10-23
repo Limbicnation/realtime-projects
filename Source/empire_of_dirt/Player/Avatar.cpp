@@ -15,34 +15,37 @@ AAvatar::AAvatar()
 {
     PrimaryActorTick.bCanEverTick = true;
 
+    // Create components
     CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>("CubeMesh");
-    SetRootComponent(CubeMesh);
-
-    PlayerMovement = CreateDefaultSubobject<UFloatingPawnMovement>("PlayerMovement");
-    PlayerMovement->MaxSpeed = 3500;
-
     ForwardArrowComponent = CreateDefaultSubobject<UArrowComponent>("ForwardArrowComponent");
-    ForwardArrowComponent->SetupAttachment(GetRootComponent());
-
-    // Initialize CameraBoom and FollowCamera
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>("CameraBoom");
-    CameraBoom->SetupAttachment(GetMesh()); // Attach to the skeletal mesh
-    CameraBoom->TargetArmLength = 300.f;
-    CameraBoom->bUsePawnControlRotation = true;
-
     FollowCamera = CreateDefaultSubobject<UCameraComponent>("FollowCamera");
+    PlayerMovement = CreateDefaultSubobject<UFloatingPawnMovement>("PlayerMovement");
+
+    // Set up component hierarchy
+    SetRootComponent(CubeMesh);
+    ForwardArrowComponent->SetupAttachment(GetRootComponent());
+    CameraBoom->SetupAttachment(GetMesh());
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-    FollowCamera->bUsePawnControlRotation = false;
 
-    bUseControllerRotationPitch = false;
-    bUseControllerRotationYaw = false;
-    bUseControllerRotationRoll = false;
-
+    // Configure movement
+    PlayerMovement->MaxSpeed = 3500.0f;
     GetCharacterMovement()->bOrientRotationToMovement = true;
     GetCharacterMovement()->RotationRate = FRotator(0.f, 250.f, 0.f);
     GetCharacterMovement()->JumpZVelocity = 600.f;
     GetCharacterMovement()->AirControl = 0.2f;
 
+    // Configure camera
+    CameraBoom->TargetArmLength = 300.f;
+    CameraBoom->bUsePawnControlRotation = true;
+    FollowCamera->bUsePawnControlRotation = false;
+
+    // Configure rotation
+    bUseControllerRotationPitch = false;
+    bUseControllerRotationYaw = false;
+    bUseControllerRotationRoll = false;
+
+    // Initialize movement values
     BaseTurnRate = 45.f;
     BaseLookUpRate = 45.f;
     bIsSprinting = false;
@@ -53,15 +56,28 @@ AAvatar::AAvatar()
 void AAvatar::BeginPlay()
 {
     Super::BeginPlay();
+    UpdateMovementVectors();
+}
+
+void AAvatar::UpdateMovementVectors()
+{
+    if (Controller)
+    {
+        const FRotator Rotation = Controller->GetControlRotation();
+        const FRotator YawRotation(0, Rotation.Yaw, 0);
+        const FRotationMatrix RotMatrix(YawRotation);
+        CachedForwardVector = RotMatrix.GetUnitAxis(EAxis::X);
+        CachedRightVector = RotMatrix.GetUnitAxis(EAxis::Y);
+    }
 }
 
 void AAvatar::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    // Align camera boom rotation with the arrow component
-    if (ForwardArrowComponent)
+    if (ForwardArrowComponent && CameraBoom)
     {
+        UpdateMovementVectors();
         CameraBoom->SetWorldRotation(ForwardArrowComponent->GetComponentRotation());
     }
 }
@@ -83,37 +99,19 @@ void AAvatar::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void AAvatar::MoveForward(float Value)
 {
-    if (Controller != nullptr && Value != 0.f)
+    if (Controller && Value != 0.f)
     {
-        // Get the forward vector from the camera
-        const FRotator Rotation = Controller->GetControlRotation();
-        const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-        // Get the forward vector based on the camera's rotation
-        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-        if (bIsSprinting)
-        {
-            Value *= SprintingValue;
-        }
-        AddMovementInput(Direction, Value / WalkingValue);
+        const float ScaledValue = Value / WalkingValue * (bIsSprinting ? SprintingValue : 1.f);
+        AddMovementInput(CachedForwardVector, ScaledValue);
     }
 }
 
 void AAvatar::MoveRight(float Value)
 {
-    if (Controller != nullptr && Value != 0.f)
+    if (Controller && Value != 0.f)
     {
-        // Get the right vector from the camera
-        const FRotator Rotation = Controller->GetControlRotation();
-        const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-        // Get the right vector based on the camera's rotation
-        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-        if (bIsSprinting)
-        {
-            Value *= WalkingValue;
-        }
-        AddMovementInput(Direction, Value / WalkingValue);
+        const float ScaledValue = Value / WalkingValue * (bIsSprinting ? WalkingValue : 1.f);
+        AddMovementInput(CachedRightVector, ScaledValue);
     }
 }
 
@@ -129,25 +127,28 @@ void AAvatar::Turn(float Value)
 
 void AAvatar::BeginSprinting()
 {
-    bIsSprinting = true;
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are Sprinting!"));
+    if (!bIsSprinting)
+    {
+        bIsSprinting = true;
+        #if WITH_EDITOR
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are Sprinting!"));
+        #endif
+    }
 }
 
 void AAvatar::EndSprinting()
 {
-    bIsSprinting = false;
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are no longer sprinting!"));
+    if (bIsSprinting)
+    {
+        bIsSprinting = false;
+        #if WITH_EDITOR
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("You are no longer sprinting!"));
+        #endif
+    }
 }
 
 void AAvatar::Shoot()
 {
-    UE_LOG(LogTemp, Warning, TEXT("shoot"));
-
-    if (ShootSound)
-    {
-        UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
-    }
-
     const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
     if (!BarrelSocket)
     {
@@ -157,36 +158,46 @@ void AAvatar::Shoot()
 
     const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
 
-    if (MuzzleFlash)
+    // Play sound and spawn effects
+    if (ShootSound)
     {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), MuzzleFlash, SocketTransform.GetLocation(), SocketTransform.GetRotation().Rotator());
+        UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetActorLocation());
     }
 
-    FVector SpawnLocation = SocketTransform.GetLocation();
-    FRotator SpawnRotation = SocketTransform.GetRotation().Rotator();
+    if (MuzzleFlash)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(), 
+            MuzzleFlash, 
+            SocketTransform.GetLocation(), 
+            SocketTransform.GetRotation().Rotator()
+        );
+    }
 
-    if (BulletClass)
+    // Spawn bullet
+    if (BulletClass && GetWorld())
     {
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
         SpawnParams.Owner = this;
         SpawnParams.Instigator = GetInstigator();
 
-        ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, SpawnLocation, SpawnRotation, SpawnParams);
-        if (Bullet)
+        if (ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(
+            BulletClass, 
+            SocketTransform.GetLocation(), 
+            SocketTransform.GetRotation().Rotator(), 
+            SpawnParams))
         {
-            FVector BulletVelocity = SpawnRotation.Vector() * 3000.0f; // Set the bullet velocity based on the rotation vector
-            Bullet->SetVelocity(BulletVelocity);
+            Bullet->SetVelocity(SocketTransform.GetRotation().Vector() * 3000.0f);
         }
     }
 
-    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-    if (AnimInstance && FireMontage)
+    // Play animation
+    if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
     {
-        AnimInstance->Montage_Play(FireMontage);
-        if (!AnimInstance->Montage_IsPlaying(FireMontage))
+        if (FireMontage)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Failed to play fire montage"));
+            AnimInstance->Montage_Play(FireMontage);
         }
     }
 }
