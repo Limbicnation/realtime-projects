@@ -24,7 +24,7 @@ public class empire_of_dirt : ModuleRules
             ModuleDirectory
         });
 
-        bEnforceIWYU = true;
+        IWYUSupport = IWYUSupport.Full;
         bLegacyPublicIncludePaths = false;
     }
 }
