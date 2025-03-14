@@ -31,6 +31,7 @@ private:
     void BeginSprinting();
     void EndSprinting();
     void Shoot();
+    void UpdateMovementVectors();
 
     UPROPERTY(EditAnywhere)
     UStaticMeshComponent* CubeMesh;
@@ -45,7 +46,7 @@ private:
     UCameraComponent* FollowCamera;
 
     UPROPERTY(EditAnywhere)
-    UArrowComponent* ForwardArrowComponent; // Renamed to avoid shadowing
+    UArrowComponent* ForwardArrowComponent;
 
     UPROPERTY(EditAnywhere)
     TSubclassOf<class ABullet> BulletClass;
@@ -58,6 +59,10 @@ private:
 
     UPROPERTY(EditAnywhere, Category = "Animations")
     class UAnimMontage* FireMontage;
+
+    // Cached movement vectors
+    FVector CachedForwardVector;
+    FVector CachedRightVector;
 
     bool bIsSprinting;
     float SprintingValue;

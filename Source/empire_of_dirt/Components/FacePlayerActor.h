@@ -22,23 +22,36 @@ protected:
 public:    
     // Called every frame
     virtual void Tick(float DeltaTime) override;
-
+    
     // Checks if the sound should be played based on the actor's rotation
     bool ShouldPlaySound(const FRotator& NewRotation) const;
 
-    // Static Mesh Component
-    UPROPERTY(VisibleAnywhere)
+    // Static Mesh Component - Made EditAnywhere to allow mesh assignment in editor
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mesh")
     UStaticMeshComponent* FacePlayerMesh;
-
+    
     // Sound cue for rotation sound effect
     UPROPERTY(EditAnywhere, Category = "Sound")
     USoundCue* RotationSoundCue;
-
+    
     // Angle difference required to trigger the rotation sound
-    UPROPERTY(EditAnywhere, Category = "Sound")
+    UPROPERTY(EditAnywhere, Category = "Sound", meta = (ClampMin = "0.0", ClampMax = "180.0"))
     float RotationSoundTriggerAngle;
-
+    
+    // How fast the actor rotates to face the player (degrees per second)
+    UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0.0", ClampMax = "360.0"))
+    float RotationSpeed;
+    
+    // Minimum time between sound plays (in seconds)
+    UPROPERTY(EditAnywhere, Category = "Sound")
+    float MinTimeBetweenSounds;
+    
+    // Scale of the mesh
+    UPROPERTY(EditAnywhere, Category = "Transform")
+    FVector MeshScale;
+    
 private:
-    // Last rotation angle at which the sound was played
     float LastPlayedSoundAngle;
+    float LastSoundPlayTime;
+    FRotator TargetRotation;
 };
