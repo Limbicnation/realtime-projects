@@ -53,7 +53,8 @@ ASciFiPawn::ASciFiPawn()
 
 	BulletOffset = 600.0f;
 
-	BulletSpeed = FVector(0.0f, 0.0f, 5000.0f);
+	// In SciFiPawn.cpp constructor
+	BulletSpeed = FVector(5000.0f, 0.0f, 0.0f);  // Forward direction with 5000 speed
 
 	// Default Bullet mesh scale
 	BulletScale = 100.f;
@@ -290,7 +291,10 @@ void ASciFiPawn::Shoot()
 			{
 				// Set velocity for the bullet to travel toward the hit point
 				FVector DirectionToHit = (HitResult.ImpactPoint - MuzzleLocation).GetSafeNormal();
-				Bullet->SetVelocity(DirectionToHit * BulletSpeed.Size());
+
+				// Use BulletSpeed's magnitude (size) instead of the actual vector
+				float BulletSpeedMagnitude = BulletSpeed.Size();
+				Bullet->SetVelocity(DirectionToHit * BulletSpeedMagnitude);
 
 				// Play fire sound if available
 				if (FireSound)
@@ -319,7 +323,10 @@ void ASciFiPawn::Shoot()
 		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, MuzzleLocation, CameraRotation, SpawnParams);
 		if (Bullet != nullptr)
 		{
-			Bullet->SetVelocity(CameraRotation.Vector() * BulletSpeed);
+			// Use BulletSpeed's magnitude (size) instead of the actual vector
+			float BulletSpeedMagnitude = BulletSpeed.Size();
+			// Use the camera's forward vector for direction, multiplied by the speed magnitude
+			Bullet->SetVelocity(CameraRotation.Vector() * BulletSpeedMagnitude);
 
 			// Play fire sound if available
 			if (FireSound)
