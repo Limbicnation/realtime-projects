@@ -433,9 +433,8 @@ void FDialogueGraphEditor::Dialogue_PasteNodes()
 
 void FDialogueGraphEditor::Dialogue_PasteNodesHere(const FVector2D& Location)
 {
-
 	//Pasting nodes is disabled as still causing issues in N3 
-	return;
+	// return;
 
 	TSharedPtr<SGraphEditor> CurrentGraphEditor = FocusedGraphEdPtr.Pin();
 	if (!CurrentGraphEditor.IsValid())
@@ -461,55 +460,56 @@ void FDialogueGraphEditor::Dialogue_PasteNodesHere(const FVector2D& Location)
 	FString TextToImport;
 	FPlatformApplicationMisc::ClipboardPaste(TextToImport);
 
+	// Disabled Node copy + paste and keeping text based until further testing can happen
 	// Import the nodes
-	TSet<UEdGraphNode*> PastedNodes;
-	FEdGraphUtilities::ImportNodesFromText(DialogueGraph, TextToImport, /*out*/ PastedNodes);
+	// TSet<UEdGraphNode*> PastedNodes;
+	// FEdGraphUtilities::ImportNodesFromText(DialogueGraph, TextToImport, /*out*/ PastedNodes);
 
-	if (PastedNodes.Num())
-	{
-		for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
-		{
-			UEdGraphNode* PasteNode = *It;
-			UDialogueGraphNode* PasteDialogueNode = Cast<UDialogueGraphNode>(PasteNode);
-
-
-			if (PasteNode && PasteDialogueNode)
-			{
-				// Select the newly pasted stuff
-				CurrentGraphEditor->SetNodeSelection(PasteNode, true);
-
-				PasteNode->NodePosX += 400.f;
-				PasteNode->NodePosY += 400.f;
-
-				PasteNode->SnapToGrid(16);
-
-				// Give new node a different Guid from the old one
-				PasteNode->CreateNewGuid();
-
-				//New dialogue graph node will point to old dialouenode, duplicate a new one for our new node
-				UDialogueNode* DupNode = Cast<UDialogueNode>(StaticDuplicateObject(PasteDialogueNode->DialogueNode, PasteDialogueNode->DialogueNode->GetOuter()));
-
-				//StaticDuplicateObject won't have assigned a unique ID, grab a unique one
-				DupNode->EnsureUniqueID();
-
-				PasteDialogueNode->DialogueNode = DupNode;
-			}
-		}
-
-		//Now that everything has been pasted, iterate a second time to rebuild the new nodes connections 
-		for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
-		{
-			UEdGraphNode* PasteNode = *It;
-			UDialogueGraphNode* PasteDialogueNode = Cast<UDialogueGraphNode>(PasteNode);
-
-			//Dialogue nodes connections will still be outdated, update these to the new connections
-			DialogueGraph->NodeAdded(PasteDialogueNode);
-			DialogueGraph->PinRewired(PasteDialogueNode, PasteDialogueNode->GetOutputPin());
-		}
-
-	}
-	else
-	{
+	// if (PastedNodes.Num())
+	// {
+	// 	for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
+	// 	{
+	// 		UEdGraphNode* PasteNode = *It;
+	// 		UDialogueGraphNode* PasteDialogueNode = Cast<UDialogueGraphNode>(PasteNode);
+	//
+	//
+	// 		if (PasteNode && PasteDialogueNode)
+	// 		{
+	// 			// Select the newly pasted stuff
+	// 			CurrentGraphEditor->SetNodeSelection(PasteNode, true);
+	//
+	// 			PasteNode->NodePosX += 400.f;
+	// 			PasteNode->NodePosY += 400.f;
+	//
+	// 			PasteNode->SnapToGrid(16);
+	//
+	// 			// Give new node a different Guid from the old one
+	// 			PasteNode->CreateNewGuid();
+	//
+	// 			//New dialogue graph node will point to old dialouenode, duplicate a new one for our new node
+	// 			UDialogueNode* DupNode = Cast<UDialogueNode>(StaticDuplicateObject(PasteDialogueNode->DialogueNode, PasteDialogueNode->DialogueNode->GetOuter()));
+	//
+	// 			//StaticDuplicateObject won't have assigned a unique ID, grab a unique one
+	// 			DupNode->EnsureUniqueID();
+	//
+	// 			PasteDialogueNode->DialogueNode = DupNode;
+	// 		}
+	// 	}
+	//
+	// 	//Now that everything has been pasted, iterate a second time to rebuild the new nodes connections 
+	// 	for (TSet<UEdGraphNode*>::TIterator It(PastedNodes); It; ++It)
+	// 	{
+	// 		UEdGraphNode* PasteNode = *It;
+	// 		UDialogueGraphNode* PasteDialogueNode = Cast<UDialogueGraphNode>(PasteNode);
+	//
+	// 		//Dialogue nodes connections will still be outdated, update these to the new connections
+	// 		DialogueGraph->NodeAdded(PasteDialogueNode);
+	// 		DialogueGraph->PinRewired(PasteDialogueNode, PasteDialogueNode->GetOutputPin());
+	// 	}
+	//
+	// }
+	// else
+	// {
 		/*
 		We may be trying to paste from narrative dialogue markup.
 		
@@ -561,8 +561,7 @@ void FDialogueGraphEditor::Dialogue_PasteNodesHere(const FVector2D& Location)
 				FString LineText = DialogueLine.RightChop(ColonIdx);
 
 				LineText.RemoveFromStart(":");
-
-
+				
 				FDialogueSchemaAction_NewNode AddNewNode;
 				UDialogueGraphNode* Node;
 				UClass* DialogueNodeClass = SpeakerID.Equals("Player", ESearchCase::IgnoreCase) ? UDialogueGraphNode_Player::StaticClass() : UDialogueGraphNode_NPC::StaticClass();
@@ -606,7 +605,7 @@ void FDialogueGraphEditor::Dialogue_PasteNodesHere(const FVector2D& Location)
 							}
 						}
 
-						NPCNode->SpeakerID = FName(SpeakerID);
+						NPCNode->SetSpeakerID(FName(SpeakerID));
 					}
 				}
 
@@ -638,7 +637,7 @@ void FDialogueGraphEditor::Dialogue_PasteNodesHere(const FVector2D& Location)
 				LastNode = Node;
 			}
 		}
-	}
+	// } // else end bracket
 
 	// Update UI
 	CurrentGraphEditor->NotifyGraphChanged();
@@ -955,11 +954,6 @@ FGraphAppearanceInfo FDialogueGraphEditor::GetDialogueGraphAppearance() const
 	return AppearanceInfo;
 }
 
-bool FDialogueGraphEditor::InEditingMode(bool bGraphIsEditable) const
-{
-	return bGraphIsEditable;
-}
-
 bool FDialogueGraphEditor::CanAccessDialogueEditorMode() const
 {
 	return IsValid(DialogueBlueprint);
@@ -1143,7 +1137,7 @@ TSharedRef<class SGraphEditor> FDialogueGraphEditor::CreateDialogueGraphEditorWi
 	const bool bGraphIsEditable = InGraph->bEditable;
 	return SNew(SGraphEditor)
 		.AdditionalCommands(GraphEditorCommands)
-		.IsEditable(this, &FDialogueGraphEditor::InEditingMode, bGraphIsEditable)
+		.IsEditable(bGraphIsEditable)
 		.Appearance(this, &FDialogueGraphEditor::GetDialogueGraphAppearance)
 		.TitleBar(TitleBarWidget)
 		.GraphToEdit(InGraph)

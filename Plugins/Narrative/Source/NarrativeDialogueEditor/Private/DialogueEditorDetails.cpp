@@ -3,10 +3,10 @@
 #include "DialogueEditorDetails.h"
 #include "DetailLayoutBuilder.h"
 #include "Dialogue.h"
+#include "DialogueSM.h"
 #include "DialogueBlueprint.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailWidgetRow.h"
-#include "DialogueSM.h"
 #include "Widgets/Input/SComboBox.h"
 #include "IPropertyUtilities.h"
 
@@ -30,7 +30,7 @@ FText FDialogueEditorDetails::GetSpeakerText() const
 		{
 			if (UDialogueNode_NPC* NPCNode = Cast<UDialogueNode_NPC>(EditedObjects[0].Get()))
 			{
-				return FText::FromName(NPCNode->SpeakerID);
+				return FText::FromName(NPCNode->GetSpeakerID());
 			}
 		}
 	}
@@ -55,7 +55,7 @@ void FDialogueEditorDetails::OnSelectionChanged(TSharedPtr<FText> NewSelection, 
 		{
 			if (UDialogueNode_NPC* NPCNode = Cast<UDialogueNode_NPC>(EditedObjects[0].Get()))
 			{
-				NPCNode->SpeakerID = FName(NewSelection->ToString());
+				NPCNode->SetSpeakerID(FName(NewSelection->ToString()));
 			}
 		}
 	}
@@ -98,70 +98,7 @@ void FDialogueEditorDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout
 			{
 				return;
 			}
-
-			if (UDialogueBlueprint* DialogueBP = Cast<UDialogueBlueprint>(NPCNode->OwningDialogue->GetOuter()))
-			{
-				if (UDialogue* DialogueCDO = Cast<UDialogue>(DialogueBP->GeneratedClass->GetDefaultObject()))
-				{
-
-					for (const auto& Speaker : DialogueCDO->Speakers)
-					{
-						SpeakersList.Add(MakeShareable(new FText(FText::FromName(Speaker.SpeakerID))));
-
-						if (Speaker.SpeakerID == NPCNode->SpeakerID)
-						{
-							SelectedItem = SpeakersList.Last();
-						}
-					}
-
-					FText RowText = LOCTEXT("SpeakerIDLabel", "Speaker");
-
-					//Add a button to make the quest designer more simplified 
-					FDetailWidgetRow& Row = Category.AddCustomRow(GroupLabel)
-						.NameContent()
-						[
-							SNew(STextBlock)
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
-						.Text(RowText)
-						]
-					.ValueContent()
-						[
-							SNew(SComboBox<TSharedPtr<FText>>)
-							.OptionsSource(&SpeakersList)
-						.OnSelectionChanged(this, &FDialogueEditorDetails::OnSelectionChanged)
-						.InitiallySelectedItem(SelectedItem)
-						.OnGenerateWidget_Lambda([](TSharedPtr<FText> Option)
-							{
-								return SNew(STextBlock)
-									.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
-									.Text(*Option);
-							})
-						[
-							SNew(STextBlock)
-							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 8))
-								.Text(this, &FDialogueEditorDetails::GetSpeakerText)
-						]
-						];
-				}
-			}
 		}
-		//else if (UDialogue* DialogueCDO = Cast<UDialogue>(EditedObjects[0]))
-		//{
-		//	//Add a button to make the quest designer more simplified 
-		//	Category.AddCustomRow(GroupLabel)
-		//		.ValueContent()
-		//		[
-		//			SNew(SButton)
-		//			.ButtonStyle(FAppStyle::Get(), "RoundButton")
-		//		.OnClicked(this, &FDialogueEditorDetails::SetTransformsFromActorSelection)
-		//		[
-		//			SNew(STextBlock)
-		//			.Font(IDetailLayoutBuilder::GetDetailFontBold())
-		//			.ToolTipText(LOCTEXT("SetSpeakerTransformsTooltip", "")
-		//			LOCTEXT("SetSpeakerTransforms", "Set Speaker Transforms From Selection"))
-		//		]
-		//		];
-		//}
 	}
 }
 

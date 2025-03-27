@@ -24,6 +24,8 @@
 #include "QuestSM.h"
 #include "Quest.h"
 #include "QuestGraphEditor.h"
+#include <Engine/ObjectLibrary.h>
+#include "QuestEditorSettings.h"
 
 #define LOCTEXT_NAMESPACE "QuestGraphSchema"
 
@@ -211,15 +213,25 @@ void UQuestGraphSchema::GetGraphContextActions(FGraphContextMenuBuilder& Context
 	if ((bIsState || bIsPT) || bNoParent)
 	{
 
-		//Todo optimize by caching these
-		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 		FCategorizedGraphActionListBuilder ActionMainCategory("Now the player needs to...");
+
+		//No need to cache this as once library loads the classes once they will be very quick to load next time 
+		auto ItemLibrary = UObjectLibrary::CreateLibrary(UNarrativeTask::StaticClass(), true, GIsEditor);
+
+		TArray<FString> Paths;
+
+		if (const UQuestEditorSettings* Settings = GetDefault<UQuestEditorSettings>())
+		{
+			Paths = Settings->QuestTaskSearchPaths;
+		}
+
+		ItemLibrary->LoadBlueprintsFromPaths(Paths);
+
+		TArray<UClass*> Subclasses;
+		ItemLibrary->GetObjects<UClass>(Subclasses);
 
 		if (UQuestBlueprint* const QuestAsset = Cast<UQuestBlueprint>(ContextMenuBuilder.CurrentGraph->GetOuter()))
 		{
-			TArray<UClass*> Subclasses;
-			GetDerivedClasses(UNarrativeTask::StaticClass(), Subclasses);
-		
 			FCategorizedGraphActionListBuilder Title("NEXT THE PLAYER HAS TO:");
 			ActionMainCategory.Append(Title);
 

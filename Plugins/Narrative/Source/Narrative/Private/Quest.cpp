@@ -3,18 +3,19 @@
 #include "Quest.h"
 #include "NarrativeDataTask.h"
 #include "QuestSM.h"
-#include "Net/UnrealNetwork.h"
-#include "GameFramework/PlayerController.h"
 #include "QuestBlueprintGeneratedClass.h"
 #include "NarrativeEvent.h"
 #include "NarrativeComponent.h"
 #include "NarrativeFunctionLibrary.h"
 #include "NarrativePartyComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Net/UnrealNetwork.h"
 
 UQuest::UQuest()
 {
 	QuestName = FText::FromString("My New Quest");
 	QuestDescription = FText::FromString("Enter a description for your quest here.");
+	bTracked = true; 
 }
 
 UWorld* UQuest::GetWorld() const
@@ -126,6 +127,8 @@ void UQuest::Deinitialize()
 
 void UQuest::BeginQuest(const FName& QuestStartID /** = NAME_None*/)
 {
+	BPPreQuestStarted(this);
+
 	QuestCompletion = EQuestCompletion::QC_Started;
 	EnterState_Internal(QuestStartID.IsNone() ? QuestStartState : GetState(QuestStartID));
 
@@ -151,6 +154,16 @@ void UQuest::TakeBranch(UQuestBranch* Branch)
 	if (OwningComp)
 	{
 		EnterState_Internal(Branch->DestinationState);
+	}
+}
+
+void UQuest::SetTracked(const bool bNewTracked)
+{
+	if (bNewTracked != bTracked)
+	{
+		bTracked = bNewTracked;
+		
+		BPOnTrackedChanged(this, bTracked);
 	}
 }
 
@@ -191,24 +204,23 @@ void UQuest::EnterState_Internal(UQuestState* NewState)
 			FailQuest(CurrentState->Description);
 		}
 
-		//Finally, activate our new state, therefore activating its branches allowing us to take one to progress through the quest 
+		//We dont call delegate updates when loading, as delegates are typically just for UI updates and things 
+		if (!OwningComp->bIsLoading)
+		{
+			//Fire delegates because we're about to activate the current state. This can actually cause another state change, which will cause delegates to fire in the wrong order. 
+			BPOnQuestNewState(this, NewState);
+
+			if (OwningComp)
+			{
+				OwningComp->OnQuestNewState.Broadcast(this, NewState);
+			}
+
+			QuestNewState.Broadcast(this, CurrentState);
+		}
+
+		//Finally, activate our new state, therefore activating its branches allowing us to take one to progress through the quest. 
 		CurrentState->Activate();
 
-		//If we're loading quests back in off disk we don't want to broadcast any progress or anything
-		if (OwningComp->bIsLoading)
-		{
-			return;
-		}
-
-		//Fire off delegates 
-		BPOnQuestNewState(this, NewState);
-
-		if (OwningComp)
-		{
-			OwningComp->OnQuestNewState.Broadcast(this, NewState);
-		}
-
-		QuestNewState.Broadcast(this, CurrentState);
 	}
 }
 
@@ -260,12 +272,12 @@ void UQuest::FailQuest(FText QuestFailedMessage)
 {
 	QuestCompletion = EQuestCompletion::QC_Failed;
 
-	BPOnQuestFailed(this, QuestFailedMessage);
-
-	QuestFailed.Broadcast(this, QuestFailedMessage);
-
-	if (OwningComp)
+	if (OwningComp && !OwningComp->bIsLoading)
 	{
+		BPOnQuestFailed(this, QuestFailedMessage);
+
+		QuestFailed.Broadcast(this, QuestFailedMessage);
+
 		OwningComp->OnQuestFailed.Broadcast(this, QuestFailedMessage);
 	}
 
@@ -276,12 +288,12 @@ void UQuest::SucceedQuest(FText QuestSucceededMessage)
 {
 	QuestCompletion = EQuestCompletion::QC_Succeded;
 
-	BPOnQuestSucceeded(this, QuestSucceededMessage);
-
-	QuestSucceeded.Broadcast(this, QuestSucceededMessage);
-
-	if (OwningComp)
+	if (OwningComp && !OwningComp->bIsLoading)
 	{
+		BPOnQuestSucceeded(this, QuestSucceededMessage);
+
+		QuestSucceeded.Broadcast(this, QuestSucceededMessage);
+
 		OwningComp->OnQuestSucceeded.Broadcast(this, QuestSucceededMessage);
 	}
 

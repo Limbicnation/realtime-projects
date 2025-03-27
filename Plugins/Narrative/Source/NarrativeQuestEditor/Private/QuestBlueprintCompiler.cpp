@@ -3,9 +3,9 @@
 
 #include "QuestBlueprintCompiler.h"
 #include "QuestBlueprintGeneratedClass.h"
-#include "QuestGraphSchema.h"
 #include "QuestSM.h"
 #include "Quest.h"
+#include "QuestGraphSchema.h"
 #include "Kismet2/KismetReinstanceUtilities.h"
 #include "QuestEditorSettings.h"
 

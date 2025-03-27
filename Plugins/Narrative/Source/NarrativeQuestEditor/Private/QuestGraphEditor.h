@@ -100,7 +100,6 @@ public:
 	FText GetQuestEditorTitle() const;
 
 	FGraphAppearanceInfo GetQuestGraphAppearance() const;
-	bool InEditingMode(bool bGraphIsEditable) const;
 
 	bool CanAccessQuestEditorMode() const;
 

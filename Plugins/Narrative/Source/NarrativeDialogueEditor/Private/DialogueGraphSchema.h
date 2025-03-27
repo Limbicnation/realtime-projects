@@ -16,7 +16,7 @@ struct NARRATIVEDIALOGUEEDITOR_API FDialogueSchemaAction_NewNode : public FEdGra
 
 	/** Template of node we want to create */
 	UPROPERTY()
-	class UDialogueGraphNode* NodeTemplate;
+	TObjectPtr<class UDialogueGraphNode> NodeTemplate;
 
 	/**For NPC replies we also pass speaker info along*/
 	UPROPERTY()

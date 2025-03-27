@@ -17,6 +17,10 @@ class NARRATIVEQUESTEDITOR_API UQuestEditorSettings : public UObject
 public:
 
 	UQuestEditorSettings();
+	
+	//All the folders the quest editor searches in to find your quest tasks. 
+	UPROPERTY(EditAnywhere, config, Category = "Quests", meta = (RelativeToGameContentDir))
+	TArray<FString> QuestTaskSearchPaths;
 
 	UPROPERTY(EditAnywhere, config, Category = "Graph Style")
 	FLinearColor FailedNodeColor;

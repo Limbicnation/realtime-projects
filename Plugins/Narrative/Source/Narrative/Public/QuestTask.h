@@ -150,7 +150,7 @@ protected:
 
 public:
 
-	/**Highly recommended to implement this function! It lets you autogenerate task descriptions that the editor UI and narrative UI will use,
+	/** Implement this if you want to autogenerate task descriptions that the editor UI and narrative UI will use,
 	meaning you don't have to write a description for every task in your game."*/
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Editor")
 	FText GetTaskDescription() const;
@@ -162,8 +162,8 @@ public:
 	FText GetTaskProgressText() const;
 	virtual FText GetTaskProgressText_Implementation() const;
 
-	/** Optional special version of GetTaskDescription that is used for displaying info the editor nodes. 
-	If you don't implement this function the nodes will just use GetTaskDescription instead. */
+	/** Optional special version of GetTaskDescription that is used for displaying info the editor nodes,
+	but won't be used for ingame descriptions. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Editor")
 	FText GetTaskNodeDescription() const;
 	virtual FText GetTaskNodeDescription_Implementation() const;

@@ -53,7 +53,8 @@ ASciFiPawn::ASciFiPawn()
 
 	BulletOffset = 600.0f;
 
-	BulletSpeed = FVector(0.0f, 0.0f, 5000.0f);
+	// In SciFiPawn.cpp constructor
+	BulletSpeed = FVector(5000.0f, 0.0f, 0.0f);  // Forward direction with 5000 speed
 
 	// Default Bullet mesh scale
 	BulletScale = 100.f;
@@ -233,74 +234,111 @@ void ASciFiPawn::EndSprint()
 
 void ASciFiPawn::Shoot()
 {
-    // Log Temp warning for firing a weapon
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
-    }
+	// Log Temp warning for firing a weapon
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
+	}
 
-    if (BulletClass == nullptr)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("BulletClass is nullptr"));
-        return;
-    }
+	if (BulletClass == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BulletClass is nullptr"));
+		return;
+	}
 
-    if (GetWorld() == nullptr)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("GetWorld() returned nullptr"));
-        return;
-    }
-	
+	if (GetWorld() == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetWorld() returned nullptr"));
+		return;
+	}
+
 	// Define the Trace Distance
 	float TraceDistance = 10000.f;
 
-    // Calculate the start and end points of the line trace
-    FVector StartTrace = Camera->GetComponentLocation();
-    FVector EndTrace = StartTrace + Camera->GetForwardVector() * TraceDistance;
+	// Define muzzle location (in front of camera)
+	FVector CameraLocation = Camera->GetComponentLocation();
+	FRotator CameraRotation = Camera->GetComponentRotation();
 
-    // Set up the collision parameters for the line trace
-    FCollisionQueryParams CollisionParams;
-    CollisionParams.AddIgnoredActor(this);
+	// Create muzzle offset from camera (this simulates a weapon muzzle position)
+	FVector MuzzleOffset = FVector(100.0f, 0.0f, 0.0f);
+	FVector MuzzleLocation = CameraLocation + CameraRotation.RotateVector(MuzzleOffset);
 
-    // Perform the line trace
-    FHitResult HitResult;
-    if (GetWorld()->LineTraceSingleByChannel(HitResult, StartTrace, EndTrace, ECC_Visibility, CollisionParams))
-    {
-        if (HitResult.GetActor())
-        {
-            // Attach the bullet mesh to the hit point
-            FVector BulletLocation = HitResult.ImpactPoint;
-            FRotator BulletRotation = FRotator::ZeroRotator;
-            ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, BulletLocation, BulletRotation);
-            if (Bullet != nullptr)
-            {
-                Bullet->AttachToActor(HitResult.GetActor(), FAttachmentTransformRules::KeepWorldTransform);
-                Bullet->SetVelocity(FVector::ZeroVector);
-            }
+	// Add small additional offset to prevent collision with the character
+	MuzzleLocation += CameraRotation.Vector() * 50.0f;
 
-            // Change the material of the hit object
-            AActor* Mesh = Cast<AActor>(HitResult.GetActor());
-            UStaticMeshComponent* StaticMeshComponent = Mesh->FindComponentByClass<UStaticMeshComponent>();
-            UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave.MI_QuadTruchetWeave'"));
-            if (StaticMeshComponent && MaterialInterface)
-            {
-                StaticMeshComponent->SetMaterial(0, MaterialInterface);
-            }
-            else
-            {
-                GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Could not get mesh. Type is %s"), *HitResult.GetActor()->StaticClass()->GetFName().ToString()));
-            }
-        }
-    }
-	else
+	// Set spawn parameters with better collision handling
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+
+	// Perform the line trace (for hit detection)
+	FVector TraceStart = CameraLocation;
+	FVector TraceEnd = TraceStart + Camera->GetForwardVector() * TraceDistance;
+
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	FHitResult HitResult;
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, CollisionParams))
 	{
-		// Spawn the bullet at the player's position and rotation
-		FVector PlayerLocation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
-		FRotator PlayerRotation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorRotation();
-		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, PlayerLocation, PlayerRotation);
-		if (Bullet != nullptr)
+		if (HitResult.GetActor())
 		{
-			Bullet->SetVelocity(PlayerRotation.Vector() * BulletSpeed);
+			// Spawn the bullet at the muzzle location with camera rotation
+			// (not at hit location, to maintain consistent behavior)
+			ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, MuzzleLocation, CameraRotation, SpawnParams);
+
+			if (Bullet != nullptr)
+			{
+				// Set velocity for the bullet to travel toward the hit point
+				FVector DirectionToHit = (HitResult.ImpactPoint - MuzzleLocation).GetSafeNormal();
+
+				// Use BulletSpeed's magnitude (size) instead of the actual vector
+				float BulletSpeedMagnitude = BulletSpeed.Size();
+				Bullet->SetVelocity(DirectionToHit * BulletSpeedMagnitude);
+
+				// Play fire sound if available
+				if (FireSound)
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
+				}
+			}
+
+			// Change the material of the hit object (keep this functionality)
+			AActor* Mesh = Cast<AActor>(HitResult.GetActor());
+			UStaticMeshComponent* StaticMeshComponent = Mesh->FindComponentByClass<UStaticMeshComponent>();
+			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave.MI_QuadTruchetWeave'"));
+			if (StaticMeshComponent && MaterialInterface)
+			{
+				StaticMeshComponent->SetMaterial(0, MaterialInterface);
+			}
+			else
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Could not get mesh. Type is %s"), *HitResult.GetActor()->StaticClass()->GetFName().ToString()));
+			}
 		}
 	}
-}
+	else
+	{
+		// No hit, spawn the bullet from the muzzle with camera direction
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, MuzzleLocation, CameraRotation, SpawnParams);
+		if (Bullet != nullptr)
+		{
+			// Use BulletSpeed's magnitude (size) instead of the actual vector
+			float BulletSpeedMagnitude = BulletSpeed.Size();
+			// Use the camera's forward vector for direction, multiplied by the speed magnitude
+			Bullet->SetVelocity(CameraRotation.Vector() * BulletSpeedMagnitude);
 
+			// Play fire sound if available
+			if (FireSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
+			}
+		}
+	}
+
+	// Spawn muzzle flash if available
+	if (MuzzleFlash)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, MuzzleLocation, CameraRotation);
+	}
+}

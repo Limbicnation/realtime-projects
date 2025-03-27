@@ -26,4 +26,12 @@ UQuestEditorSettings::UQuestEditorSettings()
 		DefaultQuestWidgetClass = QuestNodeUserWidgetFinder.Class;
 	}
 
+	QuestTaskSearchPaths.Add("/Narrative/DefaultTasks/");	
+	QuestTaskSearchPaths.Add("/NarrativeInventory/Narrative3/Tasks/");
+	QuestTaskSearchPaths.Add("/NarrativeNavigator/Narrative3/Tasks/");	
+	QuestTaskSearchPaths.Add("/NarrativeInteraction/Integrations/Narrative3/");
+	QuestTaskSearchPaths.Add("/Game/Blueprints/Tasks/");
+	QuestTaskSearchPaths.Add("/Game/Blueprints/Narrative/Tasks/");
+	QuestTaskSearchPaths.Add("/Game/Narrative/Tasks/");
+
 }

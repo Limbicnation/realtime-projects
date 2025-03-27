@@ -2,9 +2,9 @@
 
 #include "DialogueConnectionDrawingPolicy.h"
 #include "QuestSM.h"
+#include "NarrativeDialogueSettings.h"
 #include "DialogueGraphNode_NPC.h"
 #include <EdGraph/EdGraphNode.h>
-#include "NarrativeDialogueSettings.h"
 #include "DialogueEditorSettings.h"
 
 

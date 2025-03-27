@@ -155,7 +155,7 @@ bool UQuestBranch::AreTasksComplete() const
 
 	for (auto& MyTask : QuestTasks)
 	{
-		if (!MyTask->IsComplete())
+		if (MyTask && !MyTask->IsComplete())
 		{
 			bCompletedAllTasks = false;
 			break;

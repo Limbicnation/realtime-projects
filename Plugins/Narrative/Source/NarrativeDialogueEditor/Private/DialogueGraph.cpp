@@ -2,15 +2,15 @@
 
 #include "DialogueGraph.h"
 #include "Dialogue.h"
+#include "NarrativeFunctionLibrary.h"
+#include "NarrativeComponent.h"
+#include "DialogueSM.h"
+#include "QuestSM.h"
 #include "DialogueBlueprint.h"
 #include "DialogueGraphNode.h"
 #include "DialogueGraphNode_Root.h"
 #include "EdGraph/EdGraphPin.h"
-#include "QuestSM.h"
 #include "Editor/UnrealEd/Public/Editor.h"
-#include "NarrativeFunctionLibrary.h"
-#include "NarrativeComponent.h"
-#include <DialogueSM.h>
 #include "DialogueGraphNode_Player.h"
 #include "DialogueEditorSettings.h"
 
@@ -131,11 +131,11 @@ void UDialogueGraph::NodeAdded(UEdGraphNode* AddedNode)
 			{
 				UDialogueNode_NPC* RootNode = MakeNPCReply(RootGraphNode, DialogueAsset->DialogueTemplate);
 			
-				if (DialogueCDO->Speakers.IsValidIndex(0))
-				{
-					RootNode->Line.Text = FText::Format(LOCTEXT("DefaultRootNodeText", "Hi there, i'm {0}."), FText::FromString(DialogueCDO->Speakers[0].SpeakerID.ToString()));
-					RootNode->SpeakerID = DialogueCDO->Speakers[0].SpeakerID;
-				}
+				//if (DialogueCDO->Speakers.IsValidIndex(0))
+				//{
+				//	RootNode->Line.Text = FText::Format(LOCTEXT("DefaultRootNodeText", "Hi there, i'm {0}."), FText::FromString(DialogueCDO->Speakers[0].SpeakerID.ToString()));
+				//	RootNode->SpeakerID = DialogueCDO->Speakers[0].SpeakerID;
+				//}
 
 				DialogueAsset->DialogueTemplate->RootDialogue = RootNode;
 			}

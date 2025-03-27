@@ -6,7 +6,6 @@
 #include "NarrativeComponent.h"
 #include <TimerManager.h>
 
-
 #define LOCTEXT_NAMESPACE "NarrativeQuestTask"
 
 UNarrativeTask::UNarrativeTask()
@@ -99,10 +98,10 @@ void UNarrativeTask::SetProgressInternal(const int32 NewProgress, const bool bFr
 
 	if (OwningComp && bHasAuth)
 	{
-		/*If we're loading OwningComp may be invalid as BeginTask hasnt cached it yet.
-		//If we're just loading a save, set the progress but don't bother updating any quest stuff except
+		/*
+		//If we're loading a save, set the progress but don't bother updating any quest stuff except
 		//for on the current state (this is why we also check bIsActive)*/
-		if (OwningComp->bIsLoading && !bIsActive)
+		if (OwningComp->bIsLoading)
 		{
 			CurrentProgress = FMath::Clamp(NewProgress, 0, RequiredQuantity);
 			return;
@@ -159,6 +158,11 @@ UQuestBranch* UNarrativeTask::GetOwningBranch() const
 
 FText UNarrativeTask::GetTaskDescription_Implementation() const
 {
+	if (!DescriptionOverride.IsEmptyOrWhitespace())
+	{
+		return DescriptionOverride;
+	}
+	  
 	return LOCTEXT("DefaultNarrativeTaskDescription", "Task Description");
 }
 

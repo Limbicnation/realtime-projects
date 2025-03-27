@@ -173,7 +173,7 @@ public:
 
 #endif
 
-	TArray<class UDialogueNode_NPC*> GetNPCReplies(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent);
+	class UDialogueNode_NPC* GetFirstValidNPCReply(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent);
 	TArray<class UDialogueNode_Player*> GetPlayerReplies(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent);
 
 	virtual UWorld* GetWorld() const;
@@ -207,9 +207,10 @@ class NARRATIVE_API UDialogueNode_NPC : public UDialogueNode
 
 public:
 
-	/**The ID of the speaker for this node */
-	UPROPERTY(BlueprintReadWrite, Category = "Details - NPC Dialogue Node")
-	FName SpeakerID;
+	UFUNCTION(BlueprintCallable, Category = "NPC Dialogue Node")
+	FName GetSpeakerID() const {return SpeakerID;}; 
+
+	void SetSpeakerID(const FName& NewID) { SpeakerID = NewID; };
 
 	//Sequence to play when player is selecting their reply after this shot has played 
 	UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Details - NPC Dialogue Node")
@@ -218,6 +219,12 @@ public:
 	/**Grab this NPC node, appending all follow up responses to that node. Since multiple NPC replies can be linked together, 
 	we need to grab the chain of replies the NPC has to say. */
 	TArray<class UDialogueNode_NPC*> GetReplyChain(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent);
+
+protected:
+
+	/**The ID of the speaker for this node */
+	UPROPERTY(BlueprintReadWrite, Category = "Details - NPC Dialogue Node")
+	FName SpeakerID;
 
 };
 

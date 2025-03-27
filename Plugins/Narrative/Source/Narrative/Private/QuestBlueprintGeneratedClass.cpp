@@ -3,7 +3,7 @@
 
 #include "QuestBlueprintGeneratedClass.h"
 #include "Quest.h"
-#include <QuestSM.h>
+#include "QuestSM.h"
 
 void UQuestBlueprintGeneratedClass::InitializeQuest(class UQuest* Quest)
 {

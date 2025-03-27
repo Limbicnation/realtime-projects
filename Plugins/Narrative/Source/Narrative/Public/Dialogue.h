@@ -6,7 +6,7 @@
 #include "UObject/NoExportTypes.h"
 #include "LevelSequencePlayer.h"
 #include "DialogueSM.h"
-#include <MovieSceneSequencePlayer.h>
+#include "MovieSceneSequencePlayer.h"
 #include "Dialogue.generated.h"
 
 /**Represents the configuration for a speaker in this dialogue*/
@@ -19,10 +19,10 @@ struct FSpeakerInfo
 	FSpeakerInfo()
 	{
 		SpeakerID = NAME_None;
-		SpeakerName = FText::GetEmpty();
 		NodeColor = FLinearColor(0.036161, 0.115986,0.265625, 1.000000);
 
 		DefaultSpeakerShot = nullptr;
+		bIsPlayer = false;
 	};
 
 	//The name of this speaker. 
@@ -54,7 +54,14 @@ struct FSpeakerInfo
 	//Custom node colour for this NPC in the graph
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Speaker Details")
 	FLinearColor NodeColor;
-	
+
+	FName GetSpeakerID() const { return SpeakerID; };
+
+public:
+
+	UPROPERTY()
+	bool bIsPlayer;
+
 };
 
 /**Special speaker type created for the player*/
@@ -67,11 +74,34 @@ struct FPlayerSpeakerInfo : public FSpeakerInfo
 	{
 		SpeakerID = FName("Player");
 		SelectingReplyShot = nullptr;
+
+		bIsPlayer = true;
 	}
 
 	//Sequence to play when player is selecting their reply, overrides SelectingReplyShot
 	UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "Sequences", meta = (DisplayAfter = SelectingReplyShot))
 	class UNarrativeDialogueSequence* SelectingReplyShot = nullptr;
+};
+
+
+USTRUCT(BlueprintType)
+struct NARRATIVE_API FDialoguePlayParams
+{
+	GENERATED_BODY()
+
+	FDialoguePlayParams()
+	{
+		StartFromID = NAME_None;
+		Priority = -1;
+	};
+
+	//The ID the dialogue should start playing from, if empty will play from root node. 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Play Params")
+	FName StartFromID;
+
+	//The priority we want to play this dialogue at. -1 means use the dialogues default priority. 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Play Params")
+	int32 Priority;
 };
 
 //Created at runtime, but also used as a template, similar to UWidgetTrees in UWidgetBlueprints. 
@@ -85,7 +115,7 @@ public:
 	UDialogue();
 
 	virtual UWorld* GetWorld() const override;
-	virtual bool Initialize(class UNarrativeComponent* InitializingComp, FName StartFromID);
+	virtual bool Initialize(class UNarrativeComponent* InitializingComp, const FDialoguePlayParams PlayParams);
 	virtual void Deinitialize();
 
 	virtual void DuplicateAndInitializeFromDialogue(UDialogue* DialogueTemplate);
@@ -133,6 +163,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
 	bool bAutoStopMovement;
 
+	//Priority. Lower values are more important. If a dialogue attempts to play with a higher priority it will be discarded. 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
+	int32 Priority;
+
 	/*
 	* By default Narrative will aim the camera at the bone named "head" - this is the name of the UE4/5 skeletons head bone so will work with most games.
 	* If your head bone has a different name, you can input it here - if you need anything more complex simply override the GetSpeakerHeadLocation function
@@ -145,9 +179,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Configuration")
 	float DialogueBlendOutTime;
 
+	/*
+	* If enabled, we'll adjust the player to be at PlayerAutoAdjustTransform relative to the other speaker. Only used in 1 on 1 dialogue. 
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Adjustment")
+	bool bAdjustPlayerTransform;
+
+	//In 1-on-1 dialogue, we can automatically adjust your players position so they stand the desired amount of units away. 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Adjustment", meta = (EditCondition="bAdjustPlayerTransform", EditConditionHides))
+	FTransform PlayerAutoAdjustTransform;
+
 	//Camera shake the dialogue camera will play
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera")
 	TSubclassOf<class UCameraShakeBase> DialogueCameraShake;
+
+	//The attenuation to use for dialogue lines
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio")
+	class USoundAttenuation* DialogueSoundAttenuation;
 
 	//If a shot, its speaker, etc doesn't have a shot the dialogue will use this one as a default 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Instanced, Category = "Camera")
@@ -398,6 +446,13 @@ protected:
 	virtual void OnPlayerDialogueLineFinished_Implementation( class UDialogueNode_Player* Node, const FDialogueLine& DialogueLine);
 
 	/**
+	* Auto-adjust the player in 1-on-1 dialogue so we're standing in front of them even if we started talking in a different location 
+	*/
+	UFUNCTION(BlueprintNativeEvent, Category = "Dialogue")
+	void AdjustPlayerTransform();
+	virtual void AdjustPlayerTransform_Implementation();
+
+	/**
 	* Called when the dialogue Begins.
 	*/
 	UFUNCTION(BlueprintImplementableEvent, Category = "Dialogue", meta = (DisplayName = "OnBeginDialogue", ScriptName = "OnBeginDialogue"))
@@ -485,6 +540,10 @@ protected:
 	//Audio component responsible for playing any audio during the dialogue
 	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
 	class UAudioComponent* DialogueAudio;
+
+	//Play params passed into us 
+	UPROPERTY()
+	FDialoguePlayParams PlayParams;
 
 	//All spawned speaker actors, with the speaker ID mapping to that speakers avatar
 	UPROPERTY()

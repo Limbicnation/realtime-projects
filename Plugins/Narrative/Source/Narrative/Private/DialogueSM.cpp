@@ -4,17 +4,17 @@
 #include "Dialogue.h"
 #include "NarrativeComponent.h"
 #include "NarrativeCondition.h"
+#include "NarrativeDialogueSettings.h"
+#include "NarrativePartyComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Components/AudioComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
-#include "NarrativeDialogueSettings.h"
 #include "LevelSequencePlayer.h"
 #include "LevelSequenceActor.h"
 #include "Sound/SoundBase.h"
-#include "NarrativePartyComponent.h"
 
 #define LOCTEXT_NAMESPACE "DialogueSM"
 
@@ -72,19 +72,27 @@ FDialogueLine UDialogueNode::GetRandomLine(const bool bStandalone) const
 	return NewLine;
 }
 
-TArray<class UDialogueNode_NPC*> UDialogueNode::GetNPCReplies(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent)
+class UDialogueNode_NPC* UDialogueNode::GetFirstValidNPCReply(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent)
 {
-	TArray<class UDialogueNode_NPC*> ValidReplies;
+	TArray<class UDialogueNode_NPC*> RepliesToCheck = NPCReplies;
 
-	for (auto& NPCReply : NPCReplies)
+	if (const UNarrativeDialogueSettings* DialogueSettings = GetDefault<UNarrativeDialogueSettings>())
+	{
+		//Sort the replies by their Y position in the graph
+		RepliesToCheck.Sort([DialogueSettings](const UDialogueNode_NPC& NodeA, const UDialogueNode_NPC& NodeB) {
+			return DialogueSettings->bEnableVerticalWiring ? NodeA.NodePos.X < NodeB.NodePos.X : NodeA.NodePos.Y < NodeB.NodePos.Y;
+			});
+	}
+
+	for (auto& NPCReply : RepliesToCheck)
 	{
 		if (NPCReply->AreConditionsMet(OwningPawn, OwningController, NarrativeComponent))
 		{
-			ValidReplies.Add(NPCReply);
+			return NPCReply;
 		}
 	}
 
-	return ValidReplies;
+	return nullptr;
 }
 
 TArray<class UDialogueNode_Player*> UDialogueNode::GetPlayerReplies(APlayerController* OwningController, APawn* OwningPawn, class UNarrativeComponent* NarrativeComponent)
@@ -236,7 +244,7 @@ void UDialogueNode::GenerateIDFromText()
 
 	if (UDialogueNode_NPC* NPCNode = Cast<UDialogueNode_NPC>(this))
 	{
-		Prefix = NPCNode->SpeakerID.ToString();
+		Prefix = NPCNode->GetSpeakerID().ToString();
 	}
 	else
 	{
@@ -371,7 +379,10 @@ FText UDialogueNode_Player::GetHintText(class UDialogue* InDialogue) const
 {
 	if (!HintText.IsEmptyOrWhitespace())
 	{
-		return HintText;
+		// Replace string variables on the hint text
+		FText newHintText = HintText;
+		InDialogue->ReplaceStringVariables(this, Line, newHintText);
+		return newHintText;
 	}
 
 	FText TextToUse = FText::GetEmpty();
@@ -393,6 +404,9 @@ FText UDialogueNode_Player::GetHintText(class UDialogue* InDialogue) const
 	{
 		TextToUse = TextToUse.Join(LOCTEXT("CommaDelim", ", "), Hints);
 	}
+
+	// Replace string variables on the hint text
+	InDialogue->ReplaceStringVariables(this, Line, TextToUse);
 
 	return TextToUse;
 }

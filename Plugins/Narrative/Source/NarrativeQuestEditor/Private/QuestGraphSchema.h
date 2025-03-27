@@ -17,7 +17,7 @@ struct NARRATIVEQUESTEDITOR_API FQuestSchemaAction_NewNode : public FEdGraphSche
 
 	/** Template of node we want to create */
 	UPROPERTY()
-	class UQuestGraphNode* NodeTemplate;
+	TObjectPtr<class UQuestGraphNode> NodeTemplate;
 
 	FQuestSchemaAction_NewNode()
 		: FEdGraphSchemaAction()

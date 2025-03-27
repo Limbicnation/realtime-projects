@@ -4,8 +4,8 @@
 #include "DialogueAssetFactory.h"
 #include "DialogueBlueprint.h"
 #include "DialogueBlueprintGeneratedClass.h"
-#include "Kismet2/KismetEditorUtilities.h"
 #include "Dialogue.h"
+#include "Kismet2/KismetEditorUtilities.h"
 #include "BlueprintEditorSettings.h"
 #include "DialogueGraph.h"
 #include "DialogueGraphSchema.h"
@@ -51,26 +51,26 @@ UObject* UDialogueAssetFactory::FactoryCreateNew(UClass* Class, UObject* InParen
 	{
 		if (UDialogue* DialogueCDO = Cast<UDialogue>(DialogueBP->GeneratedClass->GetDefaultObject()))
 		{
-			//Generally we would never want the parent classes speakers to inherit down into child classes
-			DialogueCDO->Speakers.Empty();
+			////Generally we would never want the parent classes speakers to inherit down into child classes
+			//DialogueCDO->Speakers.Empty();
 
-			FString NameString = DialogueBP->GetFName().ToString();
+			//FString NameString = DialogueBP->GetFName().ToString();
 
-			//Add the Default Speaker to the dialogue 
-			FSpeakerInfo DefaultSpeaker;
-			int32 UnderscoreIndex = -1;
+			////Add the Default Speaker to the dialogue 
+			//FSpeakerInfo DefaultSpeaker;
+			//int32 UnderscoreIndex = -1;
 
-			if (NameString.FindChar(TCHAR('_'), UnderscoreIndex))
-			{
-				//remove D_SpeakerName prefix 
-				DefaultSpeaker.SpeakerID = FName(NameString.RightChop(UnderscoreIndex + 1));
-			}
-			else
-			{
-				DefaultSpeaker.SpeakerID = FName(NameString);
-			}
+			//if (NameString.FindChar(TCHAR('_'), UnderscoreIndex))
+			//{
+			//	//remove D_SpeakerName prefix 
+			//	DefaultSpeaker.SpeakerID = FName(NameString.RightChop(UnderscoreIndex + 1));
+			//}
+			//else
+			//{
+			//	DefaultSpeaker.SpeakerID = FName(NameString);
+			//}
 
-			DialogueCDO->Speakers.Add(DefaultSpeaker);
+			//DialogueCDO->Speakers.Add(DefaultSpeaker);
 		}
 	}
 

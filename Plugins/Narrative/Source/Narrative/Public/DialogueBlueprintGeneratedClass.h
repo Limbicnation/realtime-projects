@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/BlueprintGeneratedClass.h"
+#include "UObject/Package.h"
 #include "DialogueBlueprintGeneratedClass.generated.h"
 
 class UDialogueState;

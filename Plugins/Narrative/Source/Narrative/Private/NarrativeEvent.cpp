@@ -4,9 +4,14 @@
 #include "NarrativeEvent.h"
 
 
-bool UNarrativeEvent::ExecuteEvent_Implementation(APawn* Pawn, APlayerController* Controller, class UNarrativeComponent* NarrativeComponent)
+UNarrativeEvent::UNarrativeEvent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	return true;
+	bRefireOnLoad = true; 
+}
+
+void UNarrativeEvent::ExecuteEvent_Implementation(APawn* Pawn, APlayerController* Controller, class UNarrativeComponent* NarrativeComponent)
+{
+	
 }
 
 FString UNarrativeEvent::GetGraphDisplayText_Implementation()

@@ -11,6 +11,7 @@
 #include "QuestEditorDetails.h"
 #include "QuestEditorSettings.h"
 #include "NarrativeQuestSettings.h"
+#include "QuestTask.h"
 #include "EdGraphUtilities.h"
 #include "SQuestGraphNode.h"
 #include "QuestGraphNode.h"
@@ -22,7 +23,6 @@
 #include "QuestBlueprintCompiler.h"
 #include <AssetRegistry/AssetRegistryModule.h>
 #include "UObject/CoreRedirects.h"
-#include "QuestTask.h"
 
 DEFINE_LOG_CATEGORY(LogNarrativeQuestEditor);
 

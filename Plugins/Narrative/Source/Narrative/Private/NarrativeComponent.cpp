@@ -7,26 +7,20 @@
 #include "Quest.h"
 #include "NarrativeDataTask.h"
 #include "QuestSM.h"
-#include "Engine/Engine.h"
-#include "Kismet/GameplayStatics.h"
-#include "GameFramework/Pawn.h"
-#include "Net/UnrealNetwork.h"
-#include "TimerManager.h"
-#include "Engine/ActorChannel.h"
 #include "DialogueSM.h"
 #include "Dialogue.h"
 #include "NarrativeCondition.h"
 #include "NarrativeEvent.h"
 #include "NarrativeDialogueSettings.h"
 #include "QuestTask.h"
+#include "Engine/Engine.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/Pawn.h"
+#include "Net/UnrealNetwork.h"
+#include "TimerManager.h"
+#include "Engine/ActorChannel.h"
 
 DEFINE_LOG_CATEGORY(LogNarrative);
-
-static TAutoConsoleVariable<bool> CVarShowQuestUpdates(
-	TEXT("narrative.ShowQuestUpdates"),
-	false,
-	TEXT("Show updates to any of our quests on screen.\n")
-);
 
 // Sets default values for this component's properties
 UNarrativeComponent::UNarrativeComponent()
@@ -279,30 +273,41 @@ bool UNarrativeComponent::ForgetQuest(TSubclassOf<class UQuest> QuestClass)
 	return false;
 }
 
-bool UNarrativeComponent::HasDialogueAvailable(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID /*= NAME_None*/)
+bool UNarrativeComponent::HasDialogueAvailable(TSubclassOf<class UDialogue> DialogueClass, const FDialoguePlayParams PlayParams)
 {
 	if (IsValid(DialogueClass))
 	{
-		return MakeDialogueInstance(DialogueClass, StartFromID) != nullptr;
+		return MakeDialogueInstance(DialogueClass, PlayParams) != nullptr;
 	}
 
 	return false;
 }
 
-bool UNarrativeComponent::SetCurrentDialogue(TSubclassOf<class UDialogue> Dialogue, FName StartFromID /*= NAME_None*/)
+bool UNarrativeComponent::SetCurrentDialogue(TSubclassOf<class UDialogue> Dialogue, const FDialoguePlayParams PlayParams)
 {
 	if (Dialogue)
 	{
 		/**If we already have a dialogue running make sure its cleaned up before we begin a new one */
 		if (CurrentDialogue)
 		{
+			//Check that our CurrentDialogue's priority isn't lower than the new one
+			if (UDialogue* NewDialogue = Dialogue->GetDefaultObject<UDialogue>())
+			{
+				const int32 NewPriority = PlayParams.Priority != -1 ? PlayParams.Priority : NewDialogue->Priority;
+
+				if (NewPriority > CurrentDialogue->Priority)
+				{
+					return false; 
+				}
+			}
+
 			OnDialogueFinished.Broadcast(CurrentDialogue, true);
 
 			CurrentDialogue->Deinitialize();
 			CurrentDialogue = nullptr;
 		}
 
-		CurrentDialogue = MakeDialogueInstance(Dialogue, StartFromID);
+		CurrentDialogue = MakeDialogueInstance(Dialogue, PlayParams);
 
 		return CurrentDialogue != nullptr;
 	}
@@ -310,12 +315,12 @@ bool UNarrativeComponent::SetCurrentDialogue(TSubclassOf<class UDialogue> Dialog
 	return false;
 }
 
-bool UNarrativeComponent::BeginDialogue(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID)
+bool UNarrativeComponent::BeginDialogue(TSubclassOf<class UDialogue> DialogueClass, const FDialoguePlayParams PlayParams)
 {
 	if (HasAuthority())
 	{
 		//Server constructs the dialogue, grabs the authoritative dialogue lines, and passes them to the client for it to begin dialogue 
-		if (SetCurrentDialogue(DialogueClass, StartFromID))
+		if (SetCurrentDialogue(DialogueClass, PlayParams))
 		{
 			OnDialogueBegan.Broadcast(CurrentDialogue);
 
@@ -325,7 +330,9 @@ bool UNarrativeComponent::BeginDialogue(TSubclassOf<class UDialogue> DialogueCla
 			}
 
 			if (CurrentDialogue)
+			{
 				CurrentDialogue->Play();
+			}
 
 			return true;
 		}
@@ -497,7 +504,11 @@ void UNarrativeComponent::ClientSelectDialogueOption_Implementation(const FName&
 
 			const bool bSelected = CurrentDialogue->SelectDialogueOption(Option);
 
-			check(bSelected);
+			if (!bSelected)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("SelectDialogueOption returned false for option %s"), *GetNameSafe(Option));
+			}
+			//check(bSelected);
 		}
 	}
 }
@@ -606,6 +617,7 @@ bool UNarrativeComponent::CompleteNarrativeDataTask(const FString& TaskName, con
 		return false;
 	}
 
+	//return false;
 }
 
 class UQuest* UNarrativeComponent::MakeQuestInstance(TSubclassOf<class UQuest> QuestClass)
@@ -652,7 +664,7 @@ bool UNarrativeComponent::CompleteNarrativeTask_Internal(const FString& RawTaskS
 	return false;
 }
 
-class UDialogue* UNarrativeComponent::MakeDialogueInstance(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID /*= NAME_None*/)
+class UDialogue* UNarrativeComponent::MakeDialogueInstance(TSubclassOf<class UDialogue> DialogueClass, const FDialoguePlayParams PlayParams)
 {
 	if (IsValid(DialogueClass))
 	{
@@ -664,7 +676,7 @@ class UDialogue* UNarrativeComponent::MakeDialogueInstance(TSubclassOf<class UDi
 
 		if (UDialogue* NewDialogue = NewObject<UDialogue>(GetOwner(), DialogueClass))
 		{
-			if (NewDialogue->Initialize(this, StartFromID))
+			if (NewDialogue->Initialize(this, PlayParams))
 			{
 				return NewDialogue;
 			}
@@ -806,23 +818,6 @@ void UNarrativeComponent::OnRep_PendingUpdateList()
 		//PendingUpdateList.Empty();
 	}
 }
-
-//void UNarrativeComponent::OnRep_CurrentDialogue()
-//{
-//	FString RoleString = HasAuthority() ? "Server" : "Client";
-//
-//	UE_LOG(LogTemp, Warning, TEXT("dialogue %s started on %s"), *GetNameSafe(CurrentDialogue), *RoleString);
-//}
-//
-//void UNarrativeComponent::OnRep_QuestList()
-//{
-//	FString RoleString = HasAuthority() ? "Server"  : "Client";
-//
-//	for (auto& Quest : QuestList)
-//	{
-//		UE_LOG(LogTemp, Warning, TEXT("Quest on %s: %s"), *RoleString, *GetNameSafe(Quest));
-//	}
-//}
 
 bool UNarrativeComponent::IsQuestValid(const UQuest* Quest, FString& OutError)
 {

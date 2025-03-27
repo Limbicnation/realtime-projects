@@ -1,11 +1,13 @@
 // Copyright Narrative Tools 2022. 
 
 #include "Dialogue.h"
-#include "Net/UnrealNetwork.h"
-#include "UObject/ConstructorHelpers.h"
+#include "NarrativeDialogueSettings.h"
 #include "NarrativeComponent.h"
 #include "DialogueBlueprintGeneratedClass.h"
 #include "DialogueSM.h"
+#include "NarrativeDialogueSequence.h"
+#include "NarrativePartyComponent.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Animation/AnimInstance.h"
 #include "Components/AudioComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -16,19 +18,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "LevelSequencePlayer.h"
 #include "LevelSequenceActor.h"
-#include "NarrativeDialogueSettings.h"
-#include "Camera/CameraActor.h"
 #include "Camera/CameraShakeBase.h"
-#include "CineCameraActor.h"
-#include "CineCameraComponent.h"
-#include "NarrativeDefaultCinecam.h"
 #include "Sound/SoundBase.h"
-#include <Camera/CameraShakeBase.h>
 #include <EngineUtils.h>
-#include <Kismet/KismetMathLibrary.h>
-#include <DefaultLevelSequenceInstanceData.h>
-#include "NarrativeDialogueSequence.h"
-#include "NarrativePartyComponent.h"
 
 
 static const FName NAME_PlayerSpeakerID("Player");
@@ -47,6 +39,8 @@ UDialogue::UDialogue()
 	bBeganPlaying = false;
 	DefaultHeadBoneName = FName("head");
 	DialogueBlendOutTime = 0.f;
+	Priority = 0;
+	PlayerAutoAdjustTransform = FTransform(FRotator(0.f, 180.f, 0.f), FVector(200.f, 0.f, 0.f));
 
 	//Not sure if this is needed but really want to avoid RF_Public assert issues people were having with UE5
 	SetFlags(RF_Public);
@@ -63,7 +57,7 @@ UWorld* UDialogue::GetWorld() const
 	return nullptr;
 }
 
-bool UDialogue::Initialize(class UNarrativeComponent* InitializingComp, FName StartFromID)
+bool UDialogue::Initialize(class UNarrativeComponent* InitializingComp, const FDialoguePlayParams InPlayParams)
 {
 	if (!HasAnyFlags(RF_ClassDefaultObject))
 	{
@@ -84,17 +78,21 @@ bool UDialogue::Initialize(class UNarrativeComponent* InitializingComp, FName St
 				return false;
 			}
 
-			UDialogueNode_NPC* StartDialogue = StartFromID.IsNone() ? RootDialogue : GetNPCReplyByID(StartFromID);
 
-			if (!StartDialogue && !StartFromID.IsNone())
+			UDialogueNode_NPC* StartDialogue = InPlayParams.StartFromID.IsNone() ? RootDialogue : GetNPCReplyByID(InPlayParams.StartFromID);
+
+			if (!StartDialogue && !InPlayParams.StartFromID.IsNone())
 			{
-				UE_LOG(LogNarrative, Warning, TEXT("UDialogue::Initialize could not find Start node with StartFromID: %s. Falling back to root node."), *StartFromID.ToString());
-				StartDialogue = RootDialogue;
+				//UE_LOG(LogNarrative, Warning, TEXT("UDialogue::Initialize could not find Start node with StartFromID: %s. Falling back to root node."), *StartFromID.ToString());
+				return false;
+				//StartDialogue = RootDialogue;
 			}
 
 			//Initialize all the data required to begin the dialogue 
 			if (StartDialogue)
 			{
+				PlayParams = InPlayParams;
+				
 				OwningComp = InitializingComp;
 				OwningController = OwningComp->GetOwningController();
 				OwningPawn = OwningComp->GetOwningPawn();
@@ -158,11 +156,6 @@ void UDialogue::Deinitialize()
 	{
 		DialogueAudio->Stop();
 		DialogueAudio->DestroyComponent();
-	}
-
-	if (DialogueSequencePlayer)
-	{
-		DialogueSequencePlayer->Destroy();
 	}
 
 	OwningComp = nullptr; 
@@ -233,48 +226,32 @@ void UDialogue::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyCha
 		}
 	}
 
-	if (PlayerSpeakerInfo.SpeakerID != NAME_PlayerSpeakerID)
+	for (auto& Speaker : Speakers)
 	{
 		PlayerSpeakerInfo.SpeakerID = NAME_PlayerSpeakerID;
 	}
 
-	for (int32 i = 0; i < PartySpeakerInfo.Num(); ++i)
-	{
-		if (PartySpeakerInfo.IsValidIndex(i))
-		{
-			PartySpeakerInfo[i].SpeakerID = FName(FString::Printf(TEXT("PartyMember%d"), i));
-		}
-	}
+	//If any NPC replies don't have a valid speaker set to the first speaker TODO this is broken - figure out why 
+	//for (auto& Node : NPCReplies)
+	//{
+	//	if (Node)
+	//	{
+	//		bool bSpeakerNotFound = true;
 
-	//If a designer clears the speakers always ensure at least one is added 
-	if (Speakers.Num() == 0)
-	{
-		FSpeakerInfo DefaultSpeaker;
-		DefaultSpeaker.SpeakerID = GetFName();
-		Speakers.Add(DefaultSpeaker);
-	}
+	//		for (auto& Speaker : Speakers)
+	//		{
+	//			if (Speaker.SpeakerID == Node->SpeakerID)
+	//			{
+	//				bSpeakerNotFound = false;
+	//			}
+	//		}
 
-	//If any NPC replies don't have a valid speaker set to the first speaker
-	for (auto& Node : NPCReplies)
-	{
-		if (Node)
-		{
-			bool bSpeakerNotFound = true;
-
-			for (auto& Speaker : Speakers)
-			{
-				if (Speaker.SpeakerID == Node->SpeakerID)
-				{
-					bSpeakerNotFound = false;
-				}
-			}
-
-			if (bSpeakerNotFound)
-			{
-				Node->SpeakerID = Speakers[0].SpeakerID;
-			}
-		}
-	}
+	//		if (bSpeakerNotFound)
+	//		{
+	//			Node->SpeakerID = Speakers[0].SpeakerID;
+	//		}
+	//	}
+	//}
 }
 
 void UDialogue::PreEditChange(FEditPropertyChain& PropertyAboutToChange)
@@ -290,7 +267,7 @@ FSpeakerInfo UDialogue::GetSpeaker(const FName& SpeakerID)
 {
 	for (auto& Speaker : Speakers)
 	{
-		if (Speaker.SpeakerID == SpeakerID)
+		if (Speaker.GetSpeakerID() == SpeakerID)
 		{
 			return Speaker;
 		}
@@ -366,9 +343,12 @@ void UDialogue::EndCurrentLine()
 			DialogueAudio->OnAudioFinished.RemoveAll(this);
 		}
 
-		if (DialogueSequencePlayer && DialogueSequencePlayer->SequencePlayer)
+		if (DialogueSequencePlayer)
 		{
-			DialogueSequencePlayer->SequencePlayer->OnFinished.RemoveAll(this);
+			if (ULevelSequencePlayer* SP = DialogueSequencePlayer->GetSequencePlayer())
+			{
+				SP->OnFinished.RemoveAll(this);
+			}
 		}
 
 		if (CurrentNode->IsA<UDialogueNode_NPC>())
@@ -479,9 +459,12 @@ void UDialogue::ClientReceiveDialogueChunk(const TArray<FName>& NPCReplyIDs, con
 				DialogueAudio->OnAudioFinished.RemoveAll(this);
 			}
 
-			if (DialogueSequencePlayer && DialogueSequencePlayer->SequencePlayer)
+			if (DialogueSequencePlayer)
 			{
-				DialogueSequencePlayer->SequencePlayer->OnFinished.RemoveAll(this);
+				if (ULevelSequencePlayer* SP = DialogueSequencePlayer->GetSequencePlayer())
+				{
+					SP->OnFinished.RemoveAll(this);
+				}
 			}
 
 			if (GetWorld())
@@ -543,6 +526,13 @@ void UDialogue::OnBeginDialogue()
 {
 	K2_OnBeginDialogue();
 
+	InitSpeakerAvatars();
+
+	if (bAdjustPlayerTransform)
+	{
+		AdjustPlayerTransform();
+	}
+
 	OldViewTarget = OwningController ? OwningController->GetViewTarget() : nullptr;
 
 	/*It doesnt really make sense for the conversation participants to not face each other, so do this automagically (can be turned off) */
@@ -553,12 +543,12 @@ void UDialogue::OnBeginDialogue()
 			if (const ACharacter* PlayerChar = Cast<ACharacter>(OwningPawn))
 			{
 				if (PlayerChar->GetCharacterMovement())
+				{
 					PlayerChar->GetCharacterMovement()->StopMovementImmediately();
+				}
 			}
 		}
 	}
-
-	InitSpeakerAvatars();
 
 	if (OwningController && OwningController->IsLocalPlayerController())
 	{
@@ -579,90 +569,98 @@ void UDialogue::InitSpeakerAvatars()
 	{
 		if (AActor* SpeakerActor = LinkSpeakerAvatar(Speaker))
 		{
-			//Track spawned avatars
-			SpeakerAvatars.Add(Speaker.SpeakerID, SpeakerActor);
-			Speaker.SpeakerAvatarTransform = SpeakerActor->GetActorTransform(); 
+			if (IsValid(SpeakerActor))
+			{			
+				//Track spawned avatars
+				SpeakerAvatars.Add(Speaker.GetSpeakerID(), SpeakerActor);
+				Speaker.SpeakerAvatarTransform = SpeakerActor->GetActorTransform();
+			}
 		}
 	}
 
 	//Spawn each party members avatar in
-	if (UNarrativePartyComponent* OwningParty = Cast<UNarrativePartyComponent>(OwningComp))
+	//if (UNarrativePartyComponent* OwningParty = Cast<UNarrativePartyComponent>(OwningComp))
+	//{
+	//	TArray<APlayerState*> PartyMembers = OwningParty->GetPartyMemberStates();
+
+	//	for (int32 i = 0; i < PartyMembers.Num(); ++i)
+	//	{
+	//		if (!PartySpeakerInfo.IsValidIndex(i))
+	//		{
+	//			FPlayerSpeakerInfo NewSpeaker;
+	//			//NewSpeaker.SpeakerID = FName(FString::Printf(TEXT("PartyMember%d"), i));
+	//			PartySpeakerInfo.Add(NewSpeaker);
+	//		}
+
+	//		if (PartySpeakerInfo.IsValidIndex(i) && PartyMembers.IsValidIndex(i))
+	//		{
+	//			FPlayerSpeakerInfo& MemberSpeakerInfo = PartySpeakerInfo[i];
+
+	//			if (APlayerState* PartyMember = PartyMembers[i])
+	//			{
+	//				AActor* SpeakerActor = LinkSpeakerAvatar(MemberSpeakerInfo);
+
+	//				//Fallback to speaker actors pawn if can't link
+	//				if (!SpeakerActor)
+	//				{
+	//					SpeakerActor = PartyMember->GetPawn();
+	//				}
+
+	//				if (SpeakerActor)
+	//				{
+	//					/*There has to be a nicer way to construct an FName from a int but I sure couldnt find it!
+	//					Instead of caching speaker avatars via ID, for parties we use the players playerID which is unique.
+	//					This gives us a nice convenient way to map someones PlayerState to their Players avatar */
+	//					const FName Name_PID = FName(FString::Printf(TEXT("%d"), PartyMember->GetPlayerId()));
+
+	//					MemberSpeakerInfo.SpeakerID = Name_PID;
+
+	//					SpeakerAvatars.Add(MemberSpeakerInfo.SpeakerID, SpeakerActor);
+
+	//					//Hide the party members pawn; we've spawned them an avatar 
+	//					if (APawn* PawnOwner = PartyMember->GetPawn())
+	//					{
+	//						//Store our local pawn in the playerspeakerinfo and the existing systems will just treat it like our solo player 
+	//						if (PawnOwner->IsLocallyControlled())
+	//						{
+	//							SpeakerAvatars.Add(PlayerSpeakerInfo.SpeakerID, SpeakerActor);
+	//						}
+
+	//						//If we're using a speaker avatar for this player, we want to hide their pawn
+	//						if (SpeakerActor != PartyMember->GetPawn())
+	//						{
+	//							PawnOwner->SetActorHiddenInGame(true);
+	//						}
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
+	//else //spawn solo players avatar in 
+	//{
+	// 
+	// 
+	// 
+	
+	//Spawn the players speaker avatar in, or just use the players pawn as their avatar if one isn't set
+	if (AActor* SpeakerActor = LinkSpeakerAvatar(PlayerSpeakerInfo))
 	{
-		TArray<APlayerState*> PartyMembers = OwningParty->GetPartyMemberStates();
+		SpeakerAvatars.Add(PlayerSpeakerInfo.GetSpeakerID(), SpeakerActor);
+		PlayerSpeakerInfo.SpeakerAvatarTransform = SpeakerActor->GetActorTransform();
 
-		for (int32 i = 0; i < PartyMembers.Num(); ++i)
+		//By default if the player has a speaker avatar in the world we'll hide their pawn
+		if (OwningPawn && SpeakerActor != OwningPawn)
 		{
-			if (!PartySpeakerInfo.IsValidIndex(i))
-			{
-				FPlayerSpeakerInfo NewSpeaker;
-				NewSpeaker.SpeakerID = FName(FString::Printf(TEXT("PartyMember%d"), i));
-				PartySpeakerInfo.Add(NewSpeaker);
-			}
-
-			if (PartySpeakerInfo.IsValidIndex(i) && PartyMembers.IsValidIndex(i))
-			{
-				FPlayerSpeakerInfo& MemberSpeakerInfo = PartySpeakerInfo[i];
-
-				if (APlayerState* PartyMember = PartyMembers[i])
-				{
-					AActor* SpeakerActor = LinkSpeakerAvatar(MemberSpeakerInfo);
-
-					//Fallback to speaker actors pawn if can't link
-					if (!SpeakerActor)
-					{
-						SpeakerActor = PartyMember->GetPawn();
-					}
-
-					if (SpeakerActor)
-					{
-						/*There has to be a nicer way to construct an FName from a int but I sure couldnt find it!
-						Instead of caching speaker avatars via ID, for parties we use the players playerID which is unique.
-						This gives us a nice convenient way to map someones PlayerState to their Players avatar */
-						const FName Name_PID = FName(FString::Printf(TEXT("%d"), PartyMember->GetPlayerId()));
-
-						MemberSpeakerInfo.SpeakerID = Name_PID;
-
-						SpeakerAvatars.Add(MemberSpeakerInfo.SpeakerID, SpeakerActor);
-
-						//Hide the party members pawn; we've spawned them an avatar 
-						if (APawn* PawnOwner = PartyMember->GetPawn())
-						{
-							//Store our local pawn in the playerspeakerinfo and the existing systems will just treat it like our solo player 
-							if (PawnOwner->IsLocallyControlled())
-							{
-								SpeakerAvatars.Add(PlayerSpeakerInfo.SpeakerID, SpeakerActor);
-							}
-
-							//If we're using a speaker avatar for this player, we want to hide their pawn
-							if (SpeakerActor != PartyMember->GetPawn())
-							{
-								PawnOwner->SetActorHiddenInGame(true);
-							}
-						}
-					}
-				}
-			}
+			OwningPawn->SetActorHiddenInGame(true);
 		}
 	}
-	else //spawn solo players avatar in 
+	else if (!OwningPawn)
 	{
-		//Spawn the players speaker avatar in, or just use the players pawn as their avatar if one isn't set
-		if (AActor* SpeakerActor = LinkSpeakerAvatar(PlayerSpeakerInfo))
-		{
-			SpeakerAvatars.Add(PlayerSpeakerInfo.SpeakerID, SpeakerActor);
-			PlayerSpeakerInfo.SpeakerAvatarTransform = SpeakerActor->GetActorTransform();
-
-			//By default if the player has a speaker avatar in the world we'll hide their pawn
-			if (OwningPawn && SpeakerActor != OwningPawn)
-			{
-				OwningPawn->SetActorHiddenInGame(true);
-			}
-		}
-		else if (!OwningPawn)
-		{
-			UE_LOG(LogNarrative, Warning, TEXT("Narrative wasn't able to find the avatar for the player, as a SpeakerAvatarClass wasn't set, no actors with tag 'Player' were found, and OwningPawn was invalid."));
-		}
+		UE_LOG(LogNarrative, Warning, TEXT("Narrative wasn't able to find the avatar for the player, as a SpeakerAvatarClass wasn't set, no actors with tag 'Player' were found, and OwningPawn was invalid."));
 	}
+
+	//}
 }
 
 
@@ -672,7 +670,7 @@ void UDialogue::CleanUpSpeakerAvatars()
 	//Clean up any spawned actors
 	for (auto& Speaker : Speakers)
 	{
-		if (AActor* SpeakerAvatar = GetAvatar(Speaker.SpeakerID))
+		if (AActor* SpeakerAvatar = GetAvatar(Speaker.GetSpeakerID()))
 		{
 			DestroySpeakerAvatar(Speaker, SpeakerAvatar);
 		}
@@ -680,7 +678,7 @@ void UDialogue::CleanUpSpeakerAvatars()
 
 	for (auto& PartySpeaker : PartySpeakerInfo)
 	{
-		if (AActor* SpeakerAvatar = GetAvatar(PartySpeaker.SpeakerID))
+		if (AActor* SpeakerAvatar = GetAvatar(PartySpeaker.GetSpeakerID()))
 		{
 			DestroySpeakerAvatar(PartySpeaker, SpeakerAvatar);
 		}
@@ -817,11 +815,16 @@ void UDialogue::OnEndDialogue()
 		}
 	}
 
-	if (DialogueSequencePlayer && DialogueSequencePlayer->SequencePlayer)
+	if (DialogueSequencePlayer)
 	{
-		DialogueSequencePlayer->SequencePlayer->Stop();
+		if (ULevelSequencePlayer* SP = DialogueSequencePlayer->GetSequencePlayer())
+		{
+			SP->Stop();
+		}
+
 		DialogueSequencePlayer->Destroy();
 	}
+
 	if (OwningPawn)
 	{
 		OwningPawn->SetActorHiddenInGame(false);
@@ -852,19 +855,21 @@ void UDialogue::NPCFinishedTalking()
 		//Auto-selects should be handled by the server - clients never need to ask server to auto-select, since it will anyway
 		if (OwningComp->HasAuthority())
 		{
+			bool bWantsAutoSelect = bFreeMovement;
+
 			if (const UNarrativeDialogueSettings* DialogueSettings = GetDefault<UNarrativeDialogueSettings>())
 			{
-				if ((bFreeMovement || DialogueSettings->bAutoSelectSingleResponse) && AvailableResponses.Num() == 1)
+				if (DialogueSettings->bAutoSelectSingleResponse && AvailableResponses.Num() == 1)
 				{
-					OwningComp->TrySelectDialogueOption(AvailableResponses.Last());
-					return;
+					bWantsAutoSelect = true; 
 				}
 			}
+
 
 			//If a response is autoselect, select it and early out 
 			for (auto& AvailableResponse : AvailableResponses)
 			{
-				if (AvailableResponse && AvailableResponse->IsAutoSelect())
+				if (AvailableResponse && (AvailableResponse->IsAutoSelect() || bWantsAutoSelect))
 				{
 					OwningComp->TrySelectDialogueOption(AvailableResponse);
 					return;
@@ -892,9 +897,9 @@ void UDialogue::NPCFinishedTalking()
 		* Things like Over The Shoulder shots require a listener and a speaker to line up the shot, but since we're selecting a reply, the 
 		* selecting reply shot will use the last NPC that spoke as the listener 
 		*/
-		if (SpeakerAvatars.Contains(CurrentSpeaker.SpeakerID))
+		if (SpeakerAvatars.Contains(CurrentSpeaker.GetSpeakerID()))
 		{
-			ListeningActor = SpeakerAvatars[CurrentSpeaker.SpeakerID];
+			ListeningActor = SpeakerAvatars[CurrentSpeaker.GetSpeakerID()];
 		}
 
 		/*
@@ -950,7 +955,7 @@ void UDialogue::PlayNPCDialogueNode(class UDialogueNode_NPC* NPCReply)
 		CurrentLine = NPCReply->GetRandomLine(OwningComp->GetNetMode() == NM_Standalone);
 		ReplaceStringVariables(NPCReply, CurrentLine, CurrentLine.Text);
 
-		CurrentSpeaker = GetSpeaker(NPCReply->SpeakerID);
+		CurrentSpeaker = GetSpeaker(NPCReply->GetSpeakerID());
 
 		ProcessNodeEvents(NPCReply, true);
 
@@ -1115,9 +1120,9 @@ AActor* UDialogue::GetPlayerAvatar() const
 		}
 	}
 
-	if (SpeakerAvatars.Contains(PlayerSpeakerInfo.SpeakerID))
+	if (SpeakerAvatars.Contains(PlayerSpeakerInfo.GetSpeakerID()))
 	{
-		return SpeakerAvatars[PlayerSpeakerInfo.SpeakerID];
+		return SpeakerAvatars[PlayerSpeakerInfo.GetSpeakerID()];
 	}
 	else
 	{
@@ -1244,16 +1249,7 @@ void UDialogue::FinishPlayerDialogue()
 				}
 
 				//Find the first valid NPC reply after the option we selected
-				UDialogueNode_NPC* NextReply = nullptr;
-
-				for (auto& NextNPCReply : PlayerNode->NPCReplies)
-				{
-					if (NextNPCReply && NextNPCReply->AreConditionsMet(OwningPawn, OwningController, OwningComp))
-					{
-						NextReply = NextNPCReply;
-						break;
-					}
-				}
+				UDialogueNode_NPC* NextReply = PlayerNode->GetFirstValidNPCReply(OwningController, OwningPawn, OwningComp);
 
 				//If we can generate more dialogue from the reply that was selected, do so, otherwise exit dialogue 
 				if (GenerateDialogueChunk(NextReply))
@@ -1394,11 +1390,11 @@ TArray<UDialogueNode*> UDialogue::GetNodes() const
 AActor* UDialogue::LinkSpeakerAvatar_Implementation(const FSpeakerInfo& Info)
 {
 	//Default to using the OwningPawn, or DefaultNPCAvatar, unless something else can be found... 
-	AActor* SpawnedActor = Info.SpeakerID == PlayerSpeakerInfo.SpeakerID ? OwningPawn : nullptr;
+	AActor* SpawnedActor = Info.GetSpeakerID() == PlayerSpeakerInfo.GetSpeakerID() ? OwningPawn : nullptr;
 
-	if (!Info.SpeakerID.IsNone())
+	if (!Info.GetSpeakerID().IsNone())
 	{
-		if (!SpeakerAvatars.Contains(Info.SpeakerID) && IsValid(Info.SpeakerAvatarClass))
+		if (!SpeakerAvatars.Contains(Info.GetSpeakerID()) && IsValid(Info.SpeakerAvatarClass))
 		{
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.bNoFail = true;
@@ -1419,7 +1415,7 @@ AActor* UDialogue::LinkSpeakerAvatar_Implementation(const FSpeakerInfo& Info)
 			{
 				AActor* Actor = *It;
 
-				if (Actor && Actor->ActorHasTag(Info.SpeakerID))
+				if (Actor && Actor->ActorHasTag(Info.GetSpeakerID()))
 				{
 					FoundActors.Add(Actor);
 				}
@@ -1576,7 +1572,8 @@ void UDialogue::PlayDialogueSound_Implementation(const FDialogueLine& Line, clas
 	{
 		if (Speaker)
 		{
-			DialogueAudio = UGameplayStatics::SpawnSoundAtLocation(OwningComp, Line.DialogueSound, Speaker->GetActorLocation(), Speaker->GetActorForwardVector().Rotation());
+			//DialogueAudio = UGameplayStatics::SpawnSoundAtLocation(OwningComp, Line.DialogueSound, Speaker->GetActorLocation(), Speaker->GetActorForwardVector().Rotation(), 1.f, 1.f, 0.f, DialogueSoundAttenuation);
+			DialogueAudio = UGameplayStatics::SpawnSoundAttached(Line.DialogueSound, Speaker->GetRootComponent(), NAME_None, FVector::ZeroVector, EAttachLocation::SnapToTarget, false, 1.f, 1.f, 0.f, DialogueSoundAttenuation);
 		}
 		else //Else just play 2D audio 
 		{
@@ -1632,6 +1629,10 @@ void UDialogue::PlayDialogueNode_Implementation(class UDialogueNode* Node, const
 			{
 				PlayDialogueSequence(DefaultDialogueShot, SpeakerActor, ListenerActor);
 			}
+			else // If there is no shot to play, we should end any previously playing one 
+			{
+				StopDialogueSequence();
+			}
 		}
 	}
 }
@@ -1661,9 +1662,9 @@ void UDialogue::PlayNPCDialogue_Implementation(class UDialogueNode_NPC* NPCReply
 		ListeningActor = GetPlayerAvatar();
 	}
 
-	if (SpeakerAvatars.Contains(SpeakerInfo.SpeakerID))
+	if (SpeakerAvatars.Contains(SpeakerInfo.GetSpeakerID()))
 	{
-		SpeakingActor = *SpeakerAvatars.Find(SpeakerInfo.SpeakerID);
+		SpeakingActor = *SpeakerAvatars.Find(SpeakerInfo.GetSpeakerID());
 	}
 
 	PlayDialogueNode(NPCReply, LineToPlay, SpeakerInfo, SpeakingActor, ListeningActor);
@@ -1677,7 +1678,7 @@ void UDialogue::PlayPlayerDialogue_Implementation(class UDialogueNode_Player* Pl
 
 	if (!ListeningActor)
 	{
-		ListeningActor = GetAvatar(CurrentSpeaker.SpeakerID);
+		ListeningActor = GetAvatar(CurrentSpeaker.GetSpeakerID());
 	}
 
 	PlayDialogueNode(PlayerReply, Line, PlayerSpeakerInfo, SpeakingActor, ListeningActor);
@@ -1699,6 +1700,12 @@ float UDialogue::GetLineDuration_Implementation(class UDialogueNode* Node, const
 		{
 			LettersPerSecondLineDuration = DialogueSettings->LettersPerSecondLineDuration;
 			MinDialogueTextDisplayTime = DialogueSettings->MinDialogueTextDisplayTime;
+		}
+
+		// if the lines text is empty, return a duration of 0
+		if (Line.Text.IsEmptyOrWhitespace())
+		{
+			return 0.f;
 		}
 
 		return FMath::Max(Line.Text.ToString().Len() / LettersPerSecondLineDuration, MinDialogueTextDisplayTime);
@@ -1737,6 +1744,21 @@ void UDialogue::OnPlayerDialogueLineFinished_Implementation(class UDialogueNode_
 
 }
 
+void UDialogue::AdjustPlayerTransform_Implementation()
+{
+	//Only adjust for 1 on 1 dialogue 
+	if (Speakers.Num() == 1 && Speakers.IsValidIndex(0))
+	{
+		if (OwningPawn && OwningController)
+		{
+			const FTransform PlayerDesiredTransform = PlayerAutoAdjustTransform * Speakers[0].SpeakerAvatarTransform;
+
+			OwningPawn->TeleportTo(PlayerDesiredTransform.GetLocation(), PlayerDesiredTransform.GetRotation().Rotator());
+			OwningController->SetControlRotation(PlayerDesiredTransform.GetRotation().Rotator());
+		}
+	}
+}
+
 void UDialogue::PlayDialogueSequence(class UNarrativeDialogueSequence* Sequence, class AActor* Speaker, class AActor* Listener)
 {
 	if (Sequence && Sequence->GetSequenceAssets().Num() && OwningController && OwningController->IsLocalPlayerController())
@@ -1756,22 +1778,25 @@ void UDialogue::PlayDialogueSequence(class UNarrativeDialogueSequence* Sequence,
 			}
 		}
 
-		if (DialogueSequencePlayer && DialogueSequencePlayer->SequencePlayer)
+		if (DialogueSequencePlayer)
 		{
-			DialogueSequencePlayer->SequencePlayer->OnFinished.RemoveAll(this);
-
-			Sequence->BeginPlaySequence(DialogueSequencePlayer, this, Speaker, Listener);
-
-			if (CurrentDialogueSequence)
+			if (ULevelSequencePlayer* SP = DialogueSequencePlayer->GetSequencePlayer())
 			{
-				CurrentDialogueSequence->EndSequence();
-			}
+				SP->OnFinished.RemoveAll(this);
 
-			CurrentDialogueSequence = Sequence;
+				if (CurrentDialogueSequence)
+				{
+					CurrentDialogueSequence->EndSequence();
+				}
 
-			if (CurrentLine.Duration == ELineDuration::LD_WhenSequenceEnds)
-			{
-				DialogueSequencePlayer->SequencePlayer->OnFinished.AddDynamic(this, &UDialogue::EndCurrentLine);
+				Sequence->BeginPlaySequence(DialogueSequencePlayer, this, Speaker, Listener);
+
+				CurrentDialogueSequence = Sequence;
+
+				if (CurrentLine.Duration == ELineDuration::LD_WhenSequenceEnds)
+				{
+					SP->OnFinished.AddDynamic(this, &UDialogue::EndCurrentLine);
+				}
 			}
 		}
 
@@ -1786,16 +1811,24 @@ void UDialogue::StopDialogueSequence()
 {
 	if (OwningController && OwningController->IsLocalPlayerController())
 	{
-		if (DialogueSequencePlayer && DialogueSequencePlayer->SequencePlayer)
+		if (DialogueSequencePlayer)
 		{
-			DialogueSequencePlayer->SequencePlayer->Stop();
-
-			/*
-			If your pawn has a dialogue avatar, narrative hides your pawn as you wouldn't want it to show up in a dialogue.
-			However a UE5 bug - Stop() will re-show player pawn even if it was already hidden - we want to keep it hidden*/
-			if (OwningPawn && GetPlayerAvatar() != OwningPawn)
+			if (ULevelSequencePlayer* SP = DialogueSequencePlayer->GetSequencePlayer())
 			{
-				OwningPawn->SetActorHiddenInGame(true);
+				if (CurrentDialogueSequence)
+				{
+					CurrentDialogueSequence->EndSequence();
+				}
+
+				SP->Stop();
+
+				/*
+				If your pawn has a dialogue avatar, narrative hides your pawn as you wouldn't want it to show up in a dialogue.
+				However a UE5 bug - Stop() will re-show player pawn even if it was already hidden - we want to keep it hidden*/
+				if (OwningPawn && GetPlayerAvatar() != OwningPawn)
+				{
+					OwningPawn->SetActorHiddenInGame(true);
+				}
 			}
 		}
 	}

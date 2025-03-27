@@ -443,7 +443,7 @@ bool FQuestGraphEditor::Quest_CanCopyNodes() const
 	//Copying nodes is disabled for now
 	return false;
 
-	//// If any of the nodes can be duplicated then we should allow copying
+	// If any of the nodes can be duplicated then we should allow copying
 	//const FGraphPanelSelectionSet SelectedNodes = GetSelectedNodes();
 	//for (FGraphPanelSelectionSet::TConstIterator SelectedIter(SelectedNodes); SelectedIter; ++SelectedIter)
 	//{
@@ -843,11 +843,6 @@ FGraphAppearanceInfo FQuestGraphEditor::GetQuestGraphAppearance() const
 	return AppearanceInfo;
 }
 
-bool FQuestGraphEditor::InEditingMode(bool bGraphIsEditable) const
-{
-	return bGraphIsEditable;
-}
-
 bool FQuestGraphEditor::CanAccessQuestEditorMode() const
 {
 	return IsValid(QuestBlueprint);
@@ -1020,7 +1015,7 @@ TSharedRef<class SGraphEditor> FQuestGraphEditor::CreateQuestGraphEditorWidget(U
 	const bool bGraphIsEditable = InGraph->bEditable;
 	return SNew(SGraphEditor)
 		.AdditionalCommands(GraphEditorCommands)
-		.IsEditable(this, &FQuestGraphEditor::InEditingMode, bGraphIsEditable)
+		.IsEditable(bGraphIsEditable)
 		.Appearance(this, &FQuestGraphEditor::GetQuestGraphAppearance)
 		.TitleBar(TitleBarWidget)
 		.GraphToEdit(InGraph)

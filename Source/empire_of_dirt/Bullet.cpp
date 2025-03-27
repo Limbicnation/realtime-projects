@@ -1,33 +1,34 @@
 #include "Bullet.h"
 #include "Components/StaticMeshComponent.h"
-#include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
-#include "Misc/FileHelper.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 ABullet::ABullet()
 {
     PrimaryActorTick.bCanEverTick = true;
 
+    // Create root component
     RootComp = CreateDefaultSubobject<USceneComponent>("RootComp");
     SetRootComponent(RootComp);
 
+    // Setup bullet mesh
     BulletMesh = CreateDefaultSubobject<UStaticMeshComponent>("BulletMesh");
     BulletMesh->SetupAttachment(RootComp);
-
-    BulletMovement = CreateDefaultSubobject<UProjectileMovementComponent>("BulletMovement");
-    BulletMovement->InitialSpeed = 2500.0f;
-    BulletMovement->MaxSpeed = 5000.0f;
-    BulletMovement->bInitialVelocityInLocalSpace = true;
-
     BulletMesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
     BulletMesh->OnComponentHit.AddDynamic(this, &ABullet::OnHit);
 
-    BulletExpiry = 0.0f;
-    DestroyDelay = 3.0f;
-    BulletSpeed = FVector(5000.0f, 0.0f, 0.0f);
+    // Setup projectile movement - This will handle all movement
+    BulletMovement = CreateDefaultSubobject<UProjectileMovementComponent>("BulletMovement");
+    BulletMovement->InitialSpeed = 2500.0f;
+    BulletMovement->MaxSpeed = 5000.0f;
+    BulletMovement->bRotationFollowsVelocity = true;
+    BulletMovement->bShouldBounce = false;
+    BulletMovement->ProjectileGravityScale = 0.0f; // No gravity for laser/energy projectiles
 
-    // Initialize the MaterialInstancePaths array with valid paths
+    // Set default lifetime
+    InitialLifeSpan = 3.0f; // Destroy after 3 seconds
+
+    // Initialize the MaterialInstancePaths array
     MaterialInstancePaths = {
         "/Game/_Game/MaterialInstance/MI_EndlessTunnel_3",
         "/Game/_Game/MaterialInstance/MI_NoiseWorleyChebyshev",
@@ -40,28 +41,50 @@ ABullet::ABullet()
 void ABullet::BeginPlay()
 {
     Super::BeginPlay();
+
+    // Initialize the bullet movement with the owner's rotation
+    if (BulletMovement)
+    {
+        BulletMovement->Velocity = GetActorForwardVector() * BulletMovement->InitialSpeed;
+        BulletMovement->ProjectileGravityScale = 0.0f; // No gravity for sci-fi projectiles
+    }
+
+    // Set the bullet's lifetime
+    SetLifeSpan(DestroyDelay);
 }
 
 void ABullet::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    FHitResult HitResult;
+    // We're now using the ProjectileMovementComponent for movement
+    // No need for custom movement logic in Tick
 
-    FVector StartTrace = this->GetActorLocation();
-    FVector EndTrace = (BulletSpeed * DeltaTime) + StartTrace;
-    EndTrace.Z += this->GetActorRotation().Pitch;
+    // Optional: Add trail effect
+    // DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() - GetVelocity() * DeltaTime, 
+    //              FColor(0, 100, 255), false, 1.0f);
+}
 
-    FCollisionQueryParams CollisionParams;
-    CollisionParams.AddIgnoredActor(this);
-
-    if (GetWorld()->LineTraceSingleByChannel(HitResult, StartTrace, EndTrace, ECC_Visibility, CollisionParams))
+void ABullet::SetVelocity(const FVector& NewVelocity)
+{
+    if (BulletMovement)
     {
-        BulletMovement->InitialSpeed = BulletSpeed.Size();
+        // Use ProjectileMovementComponent to set the velocity
+        BulletMovement->Velocity = NewVelocity;
+    }
+}
 
-        UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(HitResult.GetComponent());
+void ABullet::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
+{
+    if (OtherActor && OtherActor != this && OtherComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Bullet hit: %s"), *OtherActor->GetName());
+
+        // Apply material change effect to hit object
+        UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(OtherComponent);
         if (StaticMeshComponent)
         {
+            // Check for special tag interactions
             if (StaticMeshComponent->ComponentHasTag("MyObelisk"))
             {
                 AActor* HitActor = StaticMeshComponent->GetOwner();
@@ -71,6 +94,7 @@ void ABullet::Tick(float DeltaTime)
                 }
             }
 
+            // Apply random material from the array
             if (MaterialInstancePaths.Num() > 0)
             {
                 int32 MaterialIndex = FMath::RandRange(0, MaterialInstancePaths.Num() - 1);
@@ -78,9 +102,11 @@ void ABullet::Tick(float DeltaTime)
                 {
                     UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, *MaterialInstancePaths[MaterialIndex]);
 
+                    // Play impact sound
                     USoundBase* SoundCue = LoadObject<USoundBase>(nullptr, TEXT("/Game/_Game/Assets/Sounds/Glitch/SC_Glitch"));
-                    UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundCue, HitResult.ImpactPoint);
+                    UGameplayStatics::PlaySoundAtLocation(GetWorld(), SoundCue, Hit.ImpactPoint);
 
+                    // Apply material to all slots
                     if (MaterialInterface)
                     {
                         for (int32 i = 0; i < StaticMeshComponent->GetNumMaterials(); ++i)
@@ -92,35 +118,10 @@ void ABullet::Tick(float DeltaTime)
             }
         }
 
-        Destroy();
-    }
-    else
-    {
-        BulletExpiry += DeltaTime;
+        // Optional: Spawn impact effect
+        // UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactEffect, Hit.ImpactPoint, Hit.ImpactNormal.Rotation());
 
-        if (BulletExpiry <= DestroyDelay)
-        {
-            DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(0.0f, -BulletExpiry * 80.0f, 100.0f), true);
-        }
-
-        if (BulletExpiry > DestroyDelay)
-        {
-            Destroy();
-        }
-    }
-}
-
-void ABullet::SetVelocity(const FVector& NewVelocity)
-{
-    BulletMesh->SetPhysicsLinearVelocity(NewVelocity);
-}
-
-void ABullet::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
-{
-    if (OtherActor && OtherActor != this && OtherComponent)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Bullet hit: %s"), *OtherActor->GetName());
-        // UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), /* Your particle system */, GetActorLocation()); // Commented out until you have a particle system
+        // Destroy the bullet
         Destroy();
     }
 }

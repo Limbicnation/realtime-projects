@@ -62,6 +62,8 @@ class NARRATIVE_API UNarrativeEvent : public UObject
 
 public:
 
+	UNarrativeEvent(const FObjectInitializer& ObjectInitializer);
+
 	// Allows the Object to get a valid UWorld from it's outer.
 	virtual UWorld* GetWorld() const override
 	{
@@ -88,6 +90,18 @@ public:
 	}
 
 	/**
+	When the game loads back in, should we fire this event off again?
+	
+	For example, if we used a GiveXP event to give the player 500XP when we get to a certain quest state, this should be false.
+	Since XP is saved already, quitting and reloading would grant 500XP on top of the previous amount, which is not what we want. 
+
+	On the other hand, since NPC behavior isn't saved to disk, we want this to be true for all NPC behavior events - this way when your
+	quest reloads it properly refires the event so your NPCs are ready to go when you come back to your game. 
+	*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Event")
+	bool bRefireOnLoad;
+
+	/**
 	Defines when the event should be executed 
 	*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Event")
@@ -100,8 +114,8 @@ public:
 	EPartyEventPolicy PartyEventPolicy;
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Event")
-	bool ExecuteEvent(APawn* Pawn, APlayerController* Controller, class UNarrativeComponent* NarrativeComponent);
-	virtual bool ExecuteEvent_Implementation(APawn* Pawn, APlayerController* Controller, class UNarrativeComponent* NarrativeComponent);
+	void ExecuteEvent(APawn* Pawn, APlayerController* Controller, class UNarrativeComponent* NarrativeComponent);
+	virtual void ExecuteEvent_Implementation(APawn* Pawn, APlayerController* Controller, class UNarrativeComponent* NarrativeComponent);
 
 	/**Define the text that will show up on a node if this event is added to it */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Event")

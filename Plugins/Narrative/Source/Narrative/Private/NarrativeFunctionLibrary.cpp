@@ -2,9 +2,9 @@
 
 
 #include "NarrativeFunctionLibrary.h"
-#include "Kismet/GameplayStatics.h"
 #include "NarrativeComponent.h"
 #include "NarrativeTaskManager.h"
+#include "Kismet/GameplayStatics.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/GameInstance.h"
 

@@ -18,12 +18,12 @@ void UNarrativePartyComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	DOREPLIFETIME(UNarrativePartyComponent, PartyMemberStates);
 }
 
-bool UNarrativePartyComponent::BeginDialogue(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID /*= NAME_None*/)
+bool UNarrativePartyComponent::BeginDialogue(TSubclassOf<class UDialogue> DialogueClass, const FDialoguePlayParams PlayParams)
 {
 	if (HasAuthority())
 	{
 		//Server constructs the dialogue, then replicates it back to the client so it can begin it
-		if (SetCurrentDialogue(DialogueClass, StartFromID))
+		if (SetCurrentDialogue(DialogueClass, PlayParams))
 		{
 			OnDialogueBegan.Broadcast(CurrentDialogue);
 

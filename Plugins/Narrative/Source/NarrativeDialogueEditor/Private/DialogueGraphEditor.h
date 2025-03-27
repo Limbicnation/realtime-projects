@@ -107,7 +107,6 @@ double click jumps to parent node, we need custom double clicked functionality T
 	FText GetDialogueEditorTitle() const;
 
 	FGraphAppearanceInfo GetDialogueGraphAppearance() const;
-	bool InEditingMode(bool bGraphIsEditable) const;
 
 	/** Check whether the behavior tree mode can be accessed (i.e whether we have a valid tree to edit) */
 	bool CanAccessDialogueEditorMode() const;

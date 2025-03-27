@@ -3,9 +3,9 @@
 
 #include "DialogueBlueprintCompiler.h"
 #include "DialogueBlueprintGeneratedClass.h"
-#include "DialogueGraphSchema.h"
 #include "DialogueSM.h"
 #include "Dialogue.h"
+#include "DialogueGraphSchema.h"
 #include "Kismet2/KismetReinstanceUtilities.h"
 #include "DialogueEditorSettings.h"
 

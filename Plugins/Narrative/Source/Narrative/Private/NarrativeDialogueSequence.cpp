@@ -2,12 +2,11 @@
 
 
 #include "NarrativeDialogueSequence.h"
+#include "Dialogue.h"
 #include <LevelSequenceActor.h>
 #include <CineCameraActor.h>
 #include <DefaultLevelSequenceInstanceData.h>
 #include <CineCameraComponent.h>
-#include "Dialogue.h"
-#include <Engine/TargetPoint.h>
 
 static const FName NAME_AnchorTag("Anchor");
 static const FName NAME_CinecamTag("Cinecam");
@@ -40,7 +39,7 @@ UNarrativeDialogueSequence::UNarrativeDialogueSequence()
 void UNarrativeDialogueSequence::Tick(const float DeltaTime)
 {
 	//Update the relative offset every frame if setting is enabled  
-	if ((LookAtTrackingSettings.bUpdateTrackingEveryFrame || FocusTrackingSettings.bUpdateTrackingEveryFrame) && Dialogue.IsValid() && SequenceActor.IsValid() && SequenceActor->SequencePlayer)
+	if ((LookAtTrackingSettings.bUpdateTrackingEveryFrame || FocusTrackingSettings.bUpdateTrackingEveryFrame) && Dialogue.IsValid() && SequenceActor.IsValid())
 	{
 		if (Cinecam.IsValid())
 		{
@@ -136,7 +135,14 @@ void UNarrativeDialogueSequence::BeginPlaySequence(class ALevelSequenceActor* In
 			}
 		}
 
-		InSequenceActor->SequencePlayer->Stop();
+		if (InSequenceActor)
+		{
+			if (ULevelSequencePlayer* SP = InSequenceActor->GetSequencePlayer())
+			{
+				//Commented this out as in packaged builds starting the new sequence would cause another stop to be called which caused a crash in UE's sequence player 
+				//SP->Stop();
+			}
+		}
 
 		AnchorActor = NewAnchorActor;
 		LookAtActor = NewLookAtActor;
@@ -162,16 +168,9 @@ void UNarrativeDialogueSequence::BeginPlaySequence(class ALevelSequenceActor* In
 	}
 }
 
-void UNarrativeDialogueSequence::EndSequence()
-{	
-	//No longer required, moved everything over to weak ptrs 
-	//Speaker = nullptr;
-	//Listener = nullptr;
-	//AnchorActor = nullptr;
-	//LookAtActor = nullptr;
-	//Dialogue = nullptr;
-	//SequenceActor = nullptr;
-	//Cinecam = nullptr;
+void UNarrativeDialogueSequence::EndSequence_Implementation()
+{
+
 }
 
 void UNarrativeDialogueSequence::PlaySequence_Implementation()
@@ -181,12 +180,12 @@ void UNarrativeDialogueSequence::PlaySequence_Implementation()
 		int32 SequenceIdx = FMath::RandRange(0, SequenceAssets.Num() - 1);
 		ULevelSequence* SelectedSequence = SequenceAssets[SequenceIdx];
 
-		if (SelectedSequence)
+		if (SelectedSequence && SequenceActor.IsValid())
 		{
 			SequenceActor->PlaybackSettings = PlaybackSettings;
 			SequenceActor->SetSequence(SelectedSequence);
 
-			if (SequenceActor->SequencePlayer)
+			if (ULevelSequencePlayer* SP = SequenceActor->GetSequencePlayer())
 			{
 				SequenceActor->bOverrideInstanceData = AnchorOriginRule != EAnchorOriginRule::AOR_Disabled;
 
@@ -195,10 +194,11 @@ void UNarrativeDialogueSequence::PlaySequence_Implementation()
 					InstanceData->TransformOrigin = AnchorOriginRule != EAnchorOriginRule::AOR_Disabled ? GetShotAnchorTransform() : FTransform();
 				}
 
-				SequenceActor->SequencePlayer->Play();
+
+				SP->Play();
 
 				//Go in, and tell the cinecam to focus/track the speaker 
-				for (auto& BoundObject : SequenceActor->SequencePlayer->GetBoundObjects(SequenceActor->FindNamedBinding(NAME_CinecamTag)))
+				for (auto& BoundObject : SP->GetBoundObjects(SequenceActor->FindNamedBinding(NAME_CinecamTag)))
 				{
 					Cinecam = Cast<ACineCameraActor>(BoundObject);
 

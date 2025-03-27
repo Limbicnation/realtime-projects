@@ -87,6 +87,10 @@ public:
 
 protected:
 
+	//Called before tasks are ready - a good place to set up data tasks depend on 
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName="Pre Quest Started"))
+		void BPPreQuestStarted(const UQuest* Quest);
+
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName="On Quest Started"))
 		void BPOnQuestStarted(const UQuest* Quest);
 
@@ -110,7 +114,7 @@ protected:
 		void OnQuestTaskProgressChanged(const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress);
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Quest Objective Progress Made"))
-	void BPOnQuestTaskProgressChanged(const UQuest* Quest, const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress);
+		void BPOnQuestTaskProgressChanged(const UQuest* Quest, const UNarrativeTask* Task, const class UQuestBranch* Step, int32 CurrentProgress, int32 RequiredProgress);
 
 	UFUNCTION()
 		void OnQuestTaskCompleted(const UNarrativeTask* Task, const class UQuestBranch* Branch);
@@ -123,6 +127,13 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Branch Taken"))
 		void BPOnQuestBranchCompleted(const UQuest* Quest, const class UQuestBranch* Branch);
+
+	//Tell the quest that it is tracked - by default this will enable the quests navigation markers. 
+	UFUNCTION(BlueprintCallable, Category = "Quest")
+	virtual void SetTracked(const bool bNewTracked);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Tracked Changed"))
+	void BPOnTrackedChanged(const UQuest* Quest, const bool bNewTracked);
 
 	//Explicitly tell the quest to go to the given state
 	UFUNCTION(BlueprintCallable, Category = "Quest")
@@ -144,6 +155,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest Details", meta = (MultiLine = true))
 	FText QuestDescription;
+
+	//Whether or not the quest is marked as tracked. Use this to show or hide a quest 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest Details")
+	bool bTracked;
 
 	/**Child quests don't inherit quest graph nodes, however sometimes you'd like children to inherit some states, 
 	for example your parent quest could have a state in here called "RanOutOfTime", and that way any child quests
@@ -262,6 +277,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Quests")
 	FORCEINLINE class UNarrativeComponent* GetOwningComp() const {return OwningComp;};
+
+	UFUNCTION(BlueprintPure, Category = "Quests")
+	FORCEINLINE bool IsTracked() const { return bTracked;};
 
 	/**Return all players doing this quest if shared, or the owningcontroller if solo quest*/
 	UFUNCTION(BlueprintPure, Category = "Quests")

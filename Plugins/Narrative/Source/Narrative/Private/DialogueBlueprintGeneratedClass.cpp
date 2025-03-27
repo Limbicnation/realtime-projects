@@ -2,7 +2,7 @@
 
 #include "DialogueBlueprintGeneratedClass.h"
 #include "Dialogue.h"
-#include <DialogueSM.h>
+#include "DialogueSM.h"
 
 void UDialogueBlueprintGeneratedClass::InitializeDialogue(class UDialogue* Dialogue)
 {

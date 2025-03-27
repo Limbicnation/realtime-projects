@@ -88,6 +88,33 @@ class NARRATIVE_API UNarrativeDialogueSequence : public UObject
 
 		UNarrativeDialogueSequence();
 	
+	
+		// Allows the Object to get a valid UWorld from it's outer.
+		virtual UWorld* GetWorld() const override
+		{
+			if (HasAllFlags(RF_ClassDefaultObject))
+			{
+				// If we are a CDO, we must return nullptr instead of calling Outer->GetWorld() to fool UObject::ImplementsGetWorld.
+				return nullptr;
+			}
+
+			UObject* Outer = GetOuter();
+
+			while (Outer)
+			{
+				UWorld* World = Outer->GetWorld();
+				if (World)
+				{
+					return World;
+				}
+
+				Outer = Outer->GetOuter();
+			}
+
+			return nullptr;
+		}
+
+
 		//The sequences to use - one will be selected at random 
 		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sequence")
 		FText FriendlyShotName; 
@@ -179,10 +206,18 @@ class NARRATIVE_API UNarrativeDialogueSequence : public UObject
 
 		/**Play the sequence. The anchor is the actor whose head transform works as the offset the shot uses, the speaker receieves the cameras tracking/focus*/
 		virtual void BeginPlaySequence(class ALevelSequenceActor* InSequenceActor, class UDialogue* InDialogue, class AActor* InSpeaker, class AActor* InListener);
-		virtual void EndSequence();
 
 		FORCEINLINE TArray<class ULevelSequence*> GetSequenceAssets() const { return SequenceAssets;}
 		FORCEINLINE FMovieSceneSequencePlaybackSettings GetPlaybackSettings() const {return PlaybackSettings;}
+
+		//Called before the shot is stopped and its sequence player is de-initialized. 
+		UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Dialogue Sequence")
+		void OnStop();
+
+		/** Plays the level sequence. Pretty rare you'd ever want to override this in BP but the option is there! */
+		UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Dialogue Sequence")
+		void EndSequence();
+		virtual void EndSequence_Implementation();
 
 	protected:
 

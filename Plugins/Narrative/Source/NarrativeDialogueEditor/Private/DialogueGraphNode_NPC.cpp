@@ -24,7 +24,7 @@ FLinearColor UDialogueGraphNode_NPC::GetGraphNodeColor() const
 		{
 			if (UDialogueNode_NPC* NPCNode = Cast<UDialogueNode_NPC>(DialogueNode))
 			{
-				return DialogueCDO->GetSpeaker(NPCNode->SpeakerID).NodeColor;
+				return DialogueCDO->GetSpeaker(NPCNode->GetSpeakerID()).NodeColor;
 			}
 		}
 	}
@@ -40,7 +40,7 @@ FText UDialogueGraphNode_NPC::GetNodeTitleText() const
 		{
 			if (UDialogueNode_NPC* NPCNode = Cast<UDialogueNode_NPC>(DialogueNode))
 			{
-				return FText::FromName(DialogueCDO->GetSpeaker(NPCNode->SpeakerID).SpeakerID);
+				return FText::FromName(DialogueCDO->GetSpeaker(NPCNode->GetSpeakerID()).SpeakerID);
 			}
 		}
 	}

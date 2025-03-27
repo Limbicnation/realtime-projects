@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "UObject/TextProperty.h" //Fixes a build error complaining about incomplete type UTextProperty
 #include "Components/ActorComponent.h"
-
 #include "Quest.h"
 #include "QuestSM.h"
 #include "DialogueSM.h"
@@ -164,7 +163,6 @@ public:
 };
 
 DECLARE_LOG_CATEGORY_EXTERN(LogNarrative, Log, All);
-
 
 //Narrative makes a point to expose everything via delegates so your game can update your UI, or do whatever it needs to do when an update happens. 
 
@@ -416,7 +414,6 @@ protected:
 	virtual void DialogueFinished(class UDialogue* Dialogue, const bool bStartingNewDialogue);
 
 
-
 public:
 
 	UFUNCTION(BlueprintPure, Category = "Narrative")
@@ -513,10 +510,10 @@ public:
 
 	Same as BeginDialogue, however doesn't actually begin the dialogue.*/
 	UFUNCTION(BlueprintPure, Category = "Dialogues")
-	virtual bool HasDialogueAvailable(TSubclassOf<class UDialogue> Dialogue, FName StartFromID = NAME_None);
+	virtual bool HasDialogueAvailable(TSubclassOf<class UDialogue> Dialogue, const FDialoguePlayParams PlayParams = FDialoguePlayParams());
 
 	/**Sets CurrentDialogue to the given dialogue class, cleaning up our existing dialogue if one is going. Won't actually begin playing the dialogue. */
-	virtual bool SetCurrentDialogue(TSubclassOf<class UDialogue> Dialogue, FName StartFromID = NAME_None);
+	virtual bool SetCurrentDialogue(TSubclassOf<class UDialogue> Dialogue, const FDialoguePlayParams PlayParams = FDialoguePlayParams());
 
 	/**
 	* Only callable on the server. Server grabs root dialogue node, validates its conditions, and sends it to the client via ClientRecieveDialogueOptions
@@ -532,7 +529,7 @@ public:
 	@return Whether the dialogue was successfully started 
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Dialogues", BlueprintAuthorityOnly, meta=(AdvancedDisplay = "1"))
-	virtual bool BeginDialogue(TSubclassOf<class UDialogue> Dialogue, FName StartFromID = NAME_None);
+	virtual bool BeginDialogue(TSubclassOf<class UDialogue> Dialogue, const FDialoguePlayParams PlayParams = FDialoguePlayParams());
 
 	/**Used by the server to tell client to start dialogue. Also sends the initial chunk*/
 	UFUNCTION(Client, Reliable, Category = "Dialogues")
@@ -639,7 +636,7 @@ protected:
 	/**
 	Create a dialogue object from the supplied dialogue class and params
 	*/
-	virtual class UDialogue* MakeDialogueInstance(TSubclassOf<class UDialogue> DialogueClass, FName StartFromID = NAME_None);
+	virtual class UDialogue* MakeDialogueInstance(TSubclassOf<class UDialogue> DialogueClass, const FDialoguePlayParams PlayParams = FDialoguePlayParams());
 
 
 public:

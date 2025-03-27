@@ -45,7 +45,7 @@ protected:
 
 public:
 
-	virtual bool BeginDialogue(TSubclassOf<class UDialogue> Dialogue, FName StartFromID = NAME_None) override;
+	virtual bool BeginDialogue(TSubclassOf<class UDialogue> Dialogue, const FDialoguePlayParams PlayParams = FDialoguePlayParams()) override;
 	virtual void SelectDialogueOption(class UDialogueNode_Player* Option, class APlayerState* Selector = nullptr) override;
 	virtual void ExitDialogue() override;
 

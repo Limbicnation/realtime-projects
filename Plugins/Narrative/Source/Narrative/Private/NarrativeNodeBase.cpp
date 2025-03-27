@@ -39,37 +39,43 @@ void UNarrativeNodeBase::ProcessEvents(APawn* Pawn, APlayerController* Controlle
 		return;
 	}
 
+	const bool bIsLoading = NarrativeComponent->bIsLoading;
+
 	for (auto& Event : Events)
 	{
-		if (Event && (Event->EventRuntime == Runtime || Event->EventRuntime == EEventRuntime::Both))
+		if (Event)
 		{
-			TArray<UNarrativeComponent*> CompsToExecute;
+			const bool bShouldFire = (!bIsLoading || Event->bRefireOnLoad ) && (Event->EventRuntime == Runtime || Event->EventRuntime == EEventRuntime::Both);
 
-			if (UNarrativePartyComponent* PartyComp = Cast<UNarrativePartyComponent>(NarrativeComponent))
+			if (bShouldFire)
 			{
-				if (Event->PartyEventPolicy == EPartyEventPolicy::AllPartyMembers)
+				TArray<UNarrativeComponent*> CompsToExecute;
+
+				if (UNarrativePartyComponent* PartyComp = Cast<UNarrativePartyComponent>(NarrativeComponent))
 				{
-					CompsToExecute.Append(PartyComp->GetPartyMembers());
+					if (Event->PartyEventPolicy == EPartyEventPolicy::AllPartyMembers)
+					{
+						CompsToExecute.Append(PartyComp->GetPartyMembers());
+					}
+					else if (Event->PartyEventPolicy == EPartyEventPolicy::PartyLeader)
+					{
+						CompsToExecute.Add(PartyComp->GetPartyLeader());
+					}
+					else if (Event->PartyEventPolicy == EPartyEventPolicy::Party)
+					{
+						CompsToExecute.Add(PartyComp);
+					}
 				}
-				else if (Event->PartyEventPolicy == EPartyEventPolicy::PartyLeader)
+				else
 				{
-					CompsToExecute.Add(PartyComp->GetPartyLeader());
+					CompsToExecute.Add(NarrativeComponent);
 				}
-				else if (Event->PartyEventPolicy == EPartyEventPolicy::Party)
+
+				for (auto& Comp : CompsToExecute)
 				{
-					CompsToExecute.Add(PartyComp);
+					Event->ExecuteEvent(Comp->GetOwningPawn(), Comp->GetOwningController(), Comp);
 				}
 			}
-			else
-			{
-				CompsToExecute.Add(NarrativeComponent);
-			}
-
-			for (auto& Comp : CompsToExecute)
-			{
-				Event->ExecuteEvent(Comp->GetOwningPawn(), Comp->GetOwningController(), Comp);
-			}
-
 		}
 	}
 }

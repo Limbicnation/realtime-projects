@@ -7,20 +7,15 @@
 #include "Framework/Commands/UIAction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "EdGraphNode_Comment.h"
-#include "IDialogueEditor.h"
 #include "DialogueBlueprint.h"
-#include "Toolkits/ToolkitManager.h"
 #include "DialogueConnectionDrawingPolicy.h"
 #include "DialogueGraph.h"
-#include "GraphEditorActions.h"
-#include "Framework/Commands/GenericCommands.h"
-#include "DialogueEditorCommands.h"
-#include "AssetRegistry/AssetRegistryModule.h"
-#include "DialogueSM.h"
 #include "DialogueGraphNode_NPC.h"
 #include "DialogueGraphNode_Player.h"
 #include "DialogueGraphNode.h"
 #include "DialogueGraphEditor.h"
+#include "Dialogue.h"
+#include "DialogueSM.h"
 
 #define LOCTEXT_NAMESPACE "DialogueGraphSchema"
 
@@ -77,7 +72,7 @@ UEdGraphNode* FDialogueSchemaAction_NewNode::PerformAction(class UEdGraph* Paren
 		{
 			if (UDialogueNode_NPC* NPCNode = Cast<UDialogueNode_NPC>(NPCGraphNode->DialogueNode))
 			{
-				NPCNode->SpeakerID = SpeakerInfo.SpeakerID;
+				NPCNode->SetSpeakerID(SpeakerInfo.GetSpeakerID());
 			}
 		}
 
