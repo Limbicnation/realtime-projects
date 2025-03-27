@@ -233,7 +233,10 @@ void ASciFiPawn::EndSprint()
 
 void ASciFiPawn::Shoot()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
+	// Log Temp warning for firing a weapon
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fire Weapon"));
+	}
 
 	if (BulletClass == nullptr)
 	{
@@ -247,12 +250,14 @@ void ASciFiPawn::Shoot()
 		return;
 	}
 
+	// Define the Trace Distance
+	float TraceDistance = 10000.f;
+
 	// Define muzzle location (in front of camera)
 	FVector CameraLocation = Camera->GetComponentLocation();
 	FRotator CameraRotation = Camera->GetComponentRotation();
 
 	// Create muzzle offset from camera (this simulates a weapon muzzle position)
-	// You can adjust these values to position the "muzzle" exactly where you want
 	FVector MuzzleOffset = FVector(100.0f, 0.0f, 0.0f);
 	FVector MuzzleLocation = CameraLocation + CameraRotation.RotateVector(MuzzleOffset);
 
@@ -265,33 +270,9 @@ void ASciFiPawn::Shoot()
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
 
-	// Spawn the bullet at the muzzle location with camera rotation
-	ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, MuzzleLocation, CameraRotation, SpawnParams);
-
-	if (Bullet != nullptr)
-	{
-		// The initial velocity will be set in Bullet::BeginPlay based on its forward vector,
-		// but we can override it here if needed
-		Bullet->SetVelocity(CameraRotation.Vector() * BulletSpeed);
-
-		// Play fire sound if available
-		if (FireSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
-		}
-
-		// Spawn muzzle flash if available
-		if (MuzzleFlash)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, MuzzleLocation, CameraRotation);
-		}
-	}
-
-	// Optional: Perform a line trace for immediate hit feedback
-	// This doesn't affect bullet spawning but provides instant visual feedback
-	float TraceDistance = 10000.f;
+	// Perform the line trace (for hit detection)
 	FVector TraceStart = CameraLocation;
-	FVector TraceEnd = TraceStart + CameraRotation.Vector() * TraceDistance;
+	FVector TraceEnd = TraceStart + Camera->GetForwardVector() * TraceDistance;
 
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
@@ -301,9 +282,56 @@ void ASciFiPawn::Shoot()
 	{
 		if (HitResult.GetActor())
 		{
-			// Optional: Show immediate hit effect
-			// UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactEffect, HitResult.ImpactPoint);
+			// Spawn the bullet at the muzzle location with camera rotation
+			// (not at hit location, to maintain consistent behavior)
+			ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, MuzzleLocation, CameraRotation, SpawnParams);
+
+			if (Bullet != nullptr)
+			{
+				// Set velocity for the bullet to travel toward the hit point
+				FVector DirectionToHit = (HitResult.ImpactPoint - MuzzleLocation).GetSafeNormal();
+				Bullet->SetVelocity(DirectionToHit * BulletSpeed.Size());
+
+				// Play fire sound if available
+				if (FireSound)
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
+				}
+			}
+
+			// Change the material of the hit object (keep this functionality)
+			AActor* Mesh = Cast<AActor>(HitResult.GetActor());
+			UStaticMeshComponent* StaticMeshComponent = Mesh->FindComponentByClass<UStaticMeshComponent>();
+			UMaterialInterface* MaterialInterface = LoadObject<UMaterialInterface>(nullptr, TEXT("Material'/Game/_Game/MaterialInstance/MI_QuadTruchetWeave.MI_QuadTruchetWeave'"));
+			if (StaticMeshComponent && MaterialInterface)
+			{
+				StaticMeshComponent->SetMaterial(0, MaterialInterface);
+			}
+			else
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Could not get mesh. Type is %s"), *HitResult.GetActor()->StaticClass()->GetFName().ToString()));
+			}
 		}
 	}
-}
+	else
+	{
+		// No hit, spawn the bullet from the muzzle with camera direction
+		ABullet* Bullet = GetWorld()->SpawnActor<ABullet>(BulletClass, MuzzleLocation, CameraRotation, SpawnParams);
+		if (Bullet != nullptr)
+		{
+			Bullet->SetVelocity(CameraRotation.Vector() * BulletSpeed);
 
+			// Play fire sound if available
+			if (FireSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleLocation);
+			}
+		}
+	}
+
+	// Spawn muzzle flash if available
+	if (MuzzleFlash)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, MuzzleLocation, CameraRotation);
+	}
+}

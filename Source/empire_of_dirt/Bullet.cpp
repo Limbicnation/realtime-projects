@@ -45,7 +45,6 @@ void ABullet::BeginPlay()
     // Initialize the bullet movement with the owner's rotation
     if (BulletMovement)
     {
-        // Make sure the velocity is properly initialized
         BulletMovement->Velocity = GetActorForwardVector() * BulletMovement->InitialSpeed;
         BulletMovement->ProjectileGravityScale = 0.0f; // No gravity for sci-fi projectiles
     }
