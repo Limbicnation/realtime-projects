@@ -1,7 +1,7 @@
 # FRAGMENTED_XYLOS PROTOCOL
 An experimental SciFi exploration game built in Unreal Engine 5.
 
-![FRAGMENTED_XYLOS PROTOCOL](https://github.com/Limbicnation/realtime-projects/blob/master/image/200526_Realtime_SciFi_Projects_Github.jpg)
+![FRAGMENTED_XYLOS PROTOCOL](image/fragmented_xylos_protocol_cover.jpg)
 
 ## About
 Navigate the corrupted digital ruins of Xylos, a failed terraforming colony where reality itself has been fractured by a rogue AI called BenBen. As salvage pilot Kyx, solve spatial puzzles, manipulate glitch anomalies, and collect fragments of a crystalline artifact to uncover the truth behind this twisted world.
